@@ -100,14 +100,18 @@ async def command_settings_handler(message: Message):
     """
     Send a settings panel with buttons.
     """
+
+    # get user interval
     user_settings = await db_client.exec(
-        f'select interval_hours, utc_offset, dnd_hours, language from users where user_id = {message.from_user.id}')
+        'select interval_hours, utc_offset, dnd_hours, language from users where user_id = %s', message.from_user.id)
     user_settings = user_settings[0]
 
     try:
         if messages := messages_to_delete[message.from_user.id]:
             await message.bot.delete_messages(message.chat.id, messages)
+            # rework's needed perhaps
             messages_to_delete[message.from_user.id] = []
+
     except Exception as e:
         logger.exception(f"Exception while trying to delete messages: {e}")
 
