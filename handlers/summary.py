@@ -4,7 +4,7 @@ import json
 import logging
 from aiogram import Router
 from aiogram.filters import Command
-import neurotasks
+import util.llm_tasks as llm_tasks
 from util.db import db_client
 from aiogram.types import Message
 from keyboards.kb import *
@@ -53,7 +53,7 @@ ORDER BY created_ts ASC;
     # get summary from LLM
     loop = asyncio.get_event_loop()
     get_summary_future = loop.run_in_executor(
-        None, neurotasks.make_day_summary_from_json, '\n'.join(combined_entries))
+        None, llm_tasks.make_day_summary_from_json, '\n'.join(combined_entries))
     try:
         summary = await get_summary_future
         return summary

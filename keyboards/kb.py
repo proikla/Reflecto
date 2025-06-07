@@ -15,11 +15,14 @@ def build_and_adjust(markup: InlineKeyboardMarkup, adjust=tuple) -> InlineKeyboa
 
 settings_kb = InlineKeyboardMarkup(inline_keyboard=[
     [
-        InlineKeyboardButton(text="interval", callback_data='set:int'),
+        InlineKeyboardButton(text="interval", callback_data='set:int'), # set interval for reminders
         InlineKeyboardButton(text="do not disturb hours",
-                             callback_data='set:dnd'),
-        InlineKeyboardButton(text="language", callback_data='set:lang'),
-        InlineKeyboardButton(text='Timezone', callback_data='set:tmz')
+                             callback_data='set:dnd'), # set do not disturb hours
+        InlineKeyboardButton(text="language", callback_data='set:lang'), # pick a language
+        InlineKeyboardButton(text='timezone', callback_data='set:tmz'), # pick timezone
+        InlineKeyboardButton(text='custom reminders', callback_data='set:cr'), # add custom reminders
+        InlineKeyboardButton(text='morning message', callback_data='set:mm'), # allow\disallow morning message
+        InlineKeyboardButton(text='evening summary', callback_data='set:es'), # configure evening summary time
     ]
 ])
 settings_firsttime_kb = InlineKeyboardMarkup(inline_keyboard=[

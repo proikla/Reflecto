@@ -2,8 +2,9 @@ import asyncio
 from psycopg import AsyncConnection, sql
 from APIKEYS import DBPASS
 import logging
-DBNAME = 'tg-helper'
-USER = 'postgres'
+
+DBNAME = "tg-helper"
+USER = "postgres"
 
 
 DB_DSN = f"dbname={DBNAME} user={USER} password={DBPASS}"
@@ -20,42 +21,44 @@ class DBClient:
 
     async def init(self):
         # must be awaited once at startup
-        self._pool = await AsyncConnection.connect(
-            self._dsn
-        )
+        self._pool = await AsyncConnection.connect(self._dsn)
 
     async def close(self):
         if self._pool:
             await self._pool.close()
 
     async def exec(
-            self,
+        self,
         query: str,
-        params=None
+        params=None,
+        fetchall=True,
     ):
         async with await self._pool.connect(self._dsn) as conn:
             async with conn.cursor() as cur:
                 await cur.execute(query, params=params)
 
-                if query.strip().lower().startswith('select'):
-                    return await cur.fetchall()
+                if query.strip().lower().startswith("select"):
+                    if fetchall:
+                        return await cur.fetchall()
+                    return await cur.fetchone()
 
                 await conn.commit()
 
     async def fetch_field(
         self,
-        table: str = 'users',
-        field: str = 'user_id',
-        where_field: str = 'user_id',
-        where_value='',
+        table: str = "users",
+        field: str = "user_id",
+        where_field: str = "user_id",
+        where_value="",
     ):
         """
         Return a single column value (or None) from a single-row query.
         """
         if not self._pool:
-            raise RuntimeError(
-                "DBClient not initialized; call await init() first")
-        query = sql.SQL("SELECT {field} FROM {table} WHERE {wfield} = %s LIMIT 1").format(
+            raise RuntimeError("DBClient not initialized; call await init() first")
+        query = sql.SQL(
+            "SELECT {field} FROM {table} WHERE {wfield} = %s LIMIT 1"
+        ).format(
             field=sql.Identifier(field),
             table=sql.Identifier(table),
             wfield=sql.Identifier(where_field),
@@ -80,11 +83,8 @@ class DBClient:
         """
         if not self._pool:
             logger.exception("DBCLIENT NOT INITIALIZED!")
-            raise RuntimeError(
-                "DBClient not initialized; call await init() first")
-        query = sql.SQL(
-            "UPDATE {table} SET {field} = %s WHERE {wfield} = %s"
-        ).format(
+            raise RuntimeError("DBClient not initialized; call await init() first")
+        query = sql.SQL("UPDATE {table} SET {field} = %s WHERE {wfield} = %s").format(
             table=sql.Identifier(table),
             field=sql.Identifier(field),
             wfield=sql.Identifier(where_field),
@@ -101,14 +101,20 @@ class DBClient:
         key_field: str,
         key_value: str,
         target_field: str,
-        target_value: str
+        target_value: str,
     ) -> None:
-        q = sql.SQL("""
+        q = sql.SQL(
+            """
 INSERT INTO {tbl} ({kf}, {tf})
 VALUES (%s, %s)
 ON CONFLICT ({kf})
 DO UPDATE SET {tf} = EXCLUDED.{tf}
-""").format(tbl=sql.Identifier(table), kf=sql.Identifier(key_field), tf=sql.Identifier(target_field))
+"""
+        ).format(
+            tbl=sql.Identifier(table),
+            kf=sql.Identifier(key_field),
+            tf=sql.Identifier(target_field),
+        )
         async with await self._pool.connect(self._dsn) as conn:
             async with conn.cursor() as cur:
                 await cur.execute(q, (key_value, target_value))

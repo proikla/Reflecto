@@ -5,7 +5,8 @@ import io
 from datetime import UTC, datetime, timedelta, timezone
 import json
 import logging
-from jsonschema import validate
+
+# from jsonschema import validate
 
 # third-party
 from aiogram import F, Router
@@ -13,7 +14,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 # local
-import neurotasks as nt
+import util.llm_tasks as lt
 from util.db import db_client
 from handlers.start import command_start_handler
 
@@ -43,9 +44,11 @@ async def message_handler(message: Message, state: FSMContext) -> None:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
         bot = message.bot
-        text = message.text or ''
+        text = message.text or ""
         chat_id = message.chat.id
-        user_utc_offset = await db_client.fetch_field(field='utc_offset', where_field='user_id', where_value=chat_id)
+        user_utc_offset = await db_client.fetch_field(
+            field="utc_offset", where_field="user_id", where_value=chat_id
+        )
         user_tz = timezone(timedelta(hours=user_utc_offset))
         utc_plus_offset_datetime = datetime.now(user_tz)
 
@@ -68,12 +71,8 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             blob.seek(0)
             blob = blob.read()
             # += in case there is text already along with the voice message (not gonna happen tho but why not)
-            logger.info('Trying to prompt whisper')
-            get_whisper_future = loop.run_in_executor(
-                None,
-                nt.prompt_whisper,
-                blob
-            )
+            logger.info("Trying to prompt whisper")
+            get_whisper_future = loop.run_in_executor(None, lt.prompt_whisper, blob)
             try:
                 whisper_text = await get_whisper_future
             except Exception as e:
@@ -83,15 +82,13 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             logger.info(f"Got text: {whisper_text} from whisper")
 
         # length check to prevent deepseek from hallucinating.
-        if text.count(' ') < 5:
-            await message.reply('Your message is too small!')
+        if text.count(" ") < 5:
+            await message.reply("Your message is too small!")
             return
 
         # *await JSON entry from deepseek*
         get_json_future = loop.run_in_executor(
-            None,
-            nt.get_json_from_journal_entry,
-            text
+            None, lt.get_json_from_journal_entry, text
         )
         #
         try:
@@ -106,19 +103,20 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             entry: dict = json.loads(raw_json_str)
         except Exception as e:
             logger.exception(
-                f"Failed to parse JSON from llm.\nRaw response: {raw_json_str}")
+                f"Failed to parse JSON from llm.\nRaw response: {raw_json_str}"
+            )
             await message.reply("Error. Please try again.")
             return
 
-        # *validate JSON* ?maybe redundant.
-        schema = {
-            "type": "object",
-            "properties": {
-                "entry": {"type": "string"},
-                "plans": {"type": "array"},
-                "done": {"type": "array"},
-                "mood": {"type": "integer"}}
-        }
+        # # *validate JSON* ?maybe redundant.
+        # schema = {
+        #     "type": "object",
+        #     "properties": {
+        #         "entry": {"type": "string"},
+        #         "plans": {"type": "array"},
+        #         "done": {"type": "array"},
+        #         "mood": {"type": "integer"}}
+        # }
 
         sql = """
 INSERT INTO entries (
@@ -129,16 +127,16 @@ entry
 %s
 )
 """
-        # try to validate it.
-        try:
-            validate(entry, schema)
+        # # try to validate it.
+        # try:
+        #     validate(entry, schema)
 
-        except Exception as e:
-            await message.answer("Error encountered while processing your entry. Please wait a little, then send it again.")
-            logger.exception(
-                f"Exception '{e}' while validating JSON from LLM.\n {entry=}")
+        # except Exception as e:
+        #     await message.answer("Error encountered while processing your entry. Please wait a little, then send it again.")
+        #     logger.exception(
+        #         f"Exception '{e}' while validating JSON from LLM.\n {entry=}")
 
-        # try to put data in db.
+        # *try to put data in db.
         try:
             await db_client.exec(sql, (message.from_user.id, json.dumps(entry)))
         except Exception as db_e:
@@ -146,8 +144,8 @@ entry
 
         # *Reply to user in user-friendly form.*
         done_list = entry.get("done", [])
-        mood = entry.get('mood', '-')
-        plans_list = entry.get('plans', [])
+        mood = entry.get("mood", "-")
+        plans_list = entry.get("plans", [])
 
         reply = f"""Записал!
 Сделано: {', '.join(done_list)}

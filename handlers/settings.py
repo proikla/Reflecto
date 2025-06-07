@@ -16,11 +16,17 @@ import logging
 from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
 
 
+# ? rework
 class Form(StatesGroup):
+    "usr input states"
+
     waiting_interval = State()
     waiting_dnd = State()
     waiting_tmz = State()
     waiting_lang = State()
+    waiting_cr = State()  # custom reminders
+    waiting_mm = State()  # morning message
+    waiting_es = State()  # evening summary
 
 
 class InForm(Filter):
@@ -40,54 +46,70 @@ async def process_fsm(message: Message, state: FSMContext):
     Handle messages with FSMContext present, meaning, messages that wait for a value from user. Used to configure settings.
     """
     # add_messages_to_delete(message.message_id)
-    messages_to_delete[message.from_user.id].append(message.message_id)
+    user_id = message.from_user.id
+    messages_to_delete[user_id].append(message.message_id)
 
     curr = await state.get_state()  # Form:name_of_the_state
     curr = curr[5:]
-    # curr = curr[5:]
 
     match curr:
-        case 'waiting_interval':
+        case "waiting_interval":
             if not message.text.isnumeric():
-                msg = await message.reply("Please send me the interval you want in hours.")
-                # messages_to_delete[message.from_user.id].append(
-                #     message.message_id)
-                # add_messages_to_delete(msg.message_id)
-
+                msg = await message.reply(
+                    "Please send me the interval you want in hours."
+                )
             else:
                 await db_client.update_field(
-                    'users', 'interval_hours', message.text, 'user_id', int(message.from_user.id))
-                logger.info(
-                    f"updated interval_hours for {message.from_user.id} userid")
+                    "users",
+                    "interval_hours",
+                    message.text,
+                    "user_id",
+                    int(user_id),
+                )
+                logger.info(f"updated interval_hours for {user_id} userid")
                 msg = None
 
-        case 'waiting_dnd':
-            if not re.search(r'\b\d{1,2}-\d{1,2}$', message.text):
-                msg = await message.reply("Please ensure your range is valid. Like this: 22-7. (Meaning, i won't disturb you from 22:00 to 7:00) ")
-                # messages_to_delete[message.from_user.id].append(
-                #     msg.message_id)
+        case "waiting_dnd":
+            if not re.search(r"\b\d{1,2}-\d{1,2}$", message.text):
+                msg = await message.reply(
+                    "Please ensure your range is valid. Like this: 22-7. (Meaning, i won't disturb you from 22:00 to 7:00) "
+                )
             else:
-                await db_client.update_field('users', 'dnd_hours', message.text, 'user_id', message.from_user.id)
-                logger.info(f'updated dnd')
+                await db_client.update_field(
+                    "users", "dnd_hours", message.text, "user_id", user_id
+                )
+                logger.info(f"updated dnd")
                 msg = None
 
-        case 'waiting_lang':
+        case "waiting_lang":
             if not message.text in SUPPORTED_LANGUAGES:
                 msg = await message.reply("It's not a valid language. Choose en or ru.")
             else:
-                await db_client.update_field('users', 'language', message.text, 'user_id', message.from_user.id)
-                logger.info(f"Updated language for {message.from_user.id}")
+                await db_client.update_field(
+                    "users", "language", message.text, "user_id", user_id
+                )
+                logger.info(f"Updated language for {user_id}")
                 msg = None
 
-        case 'waiting_tmz':
+        case "waiting_tmz":
+            # ?
             ...
-
+        case "waiting_cr":
+            custom_reminders = re.findall(r"[\w\s\d]+(?=,)|[\w\s]+$", message.text) # <sentence>, <sentence>
+            #! test
+            if custom_reminders:
+                db_client.update_field('users','custom_reminders', custom_reminders,'user_id', user_id)
+            else:
+                msg = message.reply("Your message is horribly wrong somehow. Try again.")
+        case 'waiting_mm':
+            if message.text.lower() in ['y','yes']:
+                await db_client.upsert_field('users','allow_')
         case _:
             msg = await message.answer("Something went wrong!")
 
     if not msg:
         msg = message
-    messages_to_delete[message.from_user.id].append(msg.message_id)
+    messages_to_delete[user_id].append(msg.message_id)
 
     # await message.answer(f"Gotcha! You chose {message.text}. {curr}")
     await command_settings_handler(message)
@@ -95,59 +117,86 @@ async def process_fsm(message: Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(Command('settings'))
+@router.message(Command("settings"))
 async def command_settings_handler(message: Message):
     """
     Send a settings panel with buttons.
     """
+    user_id = message.from_user.id
 
     # get user interval
     user_settings = await db_client.exec(
-        'select interval_hours, utc_offset, dnd_hours, language from users where user_id = %s', message.from_user.id)
+        "select interval_hours, utc_offset, dnd_hours, language from users where user_id = %s",
+        user_id,
+    )
     user_settings = user_settings[0]
 
-    try:
-        if messages := messages_to_delete[message.from_user.id]:
-            await message.bot.delete_messages(message.chat.id, messages)
-            # rework's needed perhaps
-            messages_to_delete[message.from_user.id] = []
-
-    except Exception as e:
-        logger.exception(f"Exception while trying to delete messages: {e}")
-
-    msg = await message.answer(f'''Settings: 
+    msg = await message.answer(
+        f"""Settings: 
 Interval hours: {user_settings[0]}
 Utc offset: {user_settings[1]}
 Do not disturb hours: {user_settings[2]}
-Language: {user_settings[3]}''', reply_markup=build_and_adjust(settings_kb, (3, 2)))
-    messages_to_delete[message.from_user.id].append(msg.message_id)
+Language: {user_settings[3]}""",
+        reply_markup=build_and_adjust(settings_kb, (3, 2)),
+    )
+    messages_to_delete[user_id].append(msg.message_id)
 
 
-# format of callback - set:{option}
+#! format of callback - set:{option}
 @router.callback_query(F.data.regexp(r"set:[a-z]+$"))
 async def handle_settings(callback: CallbackQuery, state: FSMContext):
     """
     handle callback_query from /settings panel
     """
-    command, option = callback.data.split(':')
+    user_id = callback.from_user.id
+    command, option = callback.data.split(":")
     match option:
-        case 'int':
-            message = await callback.message.reply("What interval do you want? (in hours)")
+        case "int":
+            message = await callback.message.reply(
+                "What interval do you want? (in hours)"
+            )
             await state.set_state(Form.waiting_interval)
-        case 'dnd':
+        case "dnd":
             # todo format in the message
-            message = await callback.message.answer("What time you don't want me to disturb you in? (range from_hour-to_hour. ex: 22-7)")
+            message = await callback.message.answer(
+                "What time you don't want me to disturb you in? (range from_hour-to_hour. ex: 22-7)"
+            )
             await state.set_state(Form.waiting_dnd)
-        case 'lang':
-            message = await callback.message.answer("What language do you speak? (ru/en)")
+        case "lang":
+            message = await callback.message.answer(
+                "What language do you speak? (ru/en)"
+            )
             await state.set_state(Form.waiting_lang)
-        case 'tmz':
-            message = await callback.message.reply(f"Choose your timezone:", reply_markup=build_and_adjust(timezones_kb, (3, 2)))
+        case "tmz":
+            message = await callback.message.reply(
+                f"Choose your timezone:",
+                reply_markup=build_and_adjust(timezones_kb, (3, 2)),
+            )
             # await state.set_state(Form.waiting_tmz)
+        case "cr":  # custom reminders
+            usr_custom_reminders = await db_client.exec(
+                "SELECT custom_reminders FROM users WHERE user_id = %s", (user_id,)
+            )
+            message = await callback.message.reply(
+                f"""
+List custom reminders you'd like to add, separated by a comma.
+Your current ones are:
+<code>{', '.join(usr_custom_reminders)}</code>
+                                                   """
+            )
+            await state.set_state(Form.waiting_cr)
+        case "mm":
+            message = await callback.message.reply(
+                f"Do you want to get morning messages? y/n"
+            )
+        case "es":
+            message = await callback.message.reply(
+                f"What time do you want to get evening summary at? 0 if you don't want to get summaries."
+            )
         case _:
             message = await callback.message.answer("Something went wrong.")
 
-    messages_to_delete[callback.from_user.id].append(message.message_id)
+    messages_to_delete[user_id].append(message.message_id)
     await callback.answer()
 
 
@@ -176,9 +225,18 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
     user_id = callback.from_user.id
 
     # put this data into db.
-    await db_client.upsert_field(table='users', key_field='user_id', key_value=user_id, target_field='utc_offset', target_value=offset)
+    await db_client.upsert_field(
+        table="users",
+        key_field="user_id",
+        key_value=user_id,
+        target_field="utc_offset",
+        target_value=offset,
+    )
     logger.info(f"Updated {user_id} in db.")
 
     # answer callback.
-    await callback.message.edit_text(f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there.", reply_markup=build_and_adjust(timezones_kb, (3, 2)))
-    await callback.answer(f'Selected {name}')
+    await callback.message.edit_text(
+        f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there.",
+        reply_markup=build_and_adjust(timezones_kb, (3, 2)),
+    )
+    await callback.answer(f"Selected {name}")
