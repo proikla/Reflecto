@@ -6,9 +6,11 @@ import logging
 DBNAME = "tg-helper"
 USER = "postgres"
 
+DBNAME = "tg-helper"
+USER = "postgres"
+
 
 DB_DSN = f"dbname={DBNAME} user={USER} password={DBPASS}"
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +23,7 @@ class DBClient:
 
     async def init(self):
         # must be awaited once at startup
+        self._pool = await AsyncConnection.connect(self._dsn)
         self._pool = await AsyncConnection.connect(self._dsn)
 
     async def close(self):
@@ -50,11 +53,19 @@ class DBClient:
         field: str = "user_id",
         where_field: str = "user_id",
         where_value="",
+        table: str = "users",
+        field: str = "user_id",
+        where_field: str = "user_id",
+        where_value="",
     ):
         """
         Return a single column value (or None) from a single-row query.
         """
         if not self._pool:
+            raise RuntimeError("DBClient not initialized; call await init() first")
+        query = sql.SQL(
+            "SELECT {field} FROM {table} WHERE {wfield} = %s LIMIT 1"
+        ).format(
             raise RuntimeError("DBClient not initialized; call await init() first")
         query = sql.SQL(
             "SELECT {field} FROM {table} WHERE {wfield} = %s LIMIT 1"
@@ -85,6 +96,8 @@ class DBClient:
             logger.exception("DBCLIENT NOT INITIALIZED!")
             raise RuntimeError("DBClient not initialized; call await init() first")
         query = sql.SQL("UPDATE {table} SET {field} = %s WHERE {wfield} = %s").format(
+            raise RuntimeError("DBClient not initialized; call await init() first")
+        query = sql.SQL("UPDATE {table} SET {field} = %s WHERE {wfield} = %s").format(
             table=sql.Identifier(table),
             field=sql.Identifier(field),
             wfield=sql.Identifier(where_field),
@@ -102,13 +115,22 @@ class DBClient:
         key_value: str,
         target_field: str,
         target_value: str,
+        target_value: str,
     ) -> None:
+        q = sql.SQL(
+            """
         q = sql.SQL(
             """
 INSERT INTO {tbl} ({kf}, {tf})
 VALUES (%s, %s)
 ON CONFLICT ({kf})
 DO UPDATE SET {tf} = EXCLUDED.{tf}
+"""
+        ).format(
+            tbl=sql.Identifier(table),
+            kf=sql.Identifier(key_field),
+            tf=sql.Identifier(target_field),
+        )
 """
         ).format(
             tbl=sql.Identifier(table),
