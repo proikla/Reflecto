@@ -12,8 +12,11 @@ from util.db import db_client
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 import logging
-
+from handlers.scheduling import scheduler
 from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
+from handlers.scheduling import send_msg
+
+# from polling import scheduler
 
 
 # ? rework
@@ -40,6 +43,12 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+def next_midnight():
+    return datetime.datetime.combine(
+        datetime.date.today() + datetime.timedelta(days=1), datetime.time.min
+    )
+
+
 @router.message(InForm(), F.text)
 async def process_fsm(message: Message, state: FSMContext):
     """
@@ -52,7 +61,11 @@ async def process_fsm(message: Message, state: FSMContext):
     curr = await state.get_state()  # Form:name_of_the_state
     curr = curr[5:]
 
+    # delete user answer
+    messages_to_delete[user_id].append(message.message_id)
+    # * Handle different states.
     match curr:
+        case "waiting_interval":
         case "waiting_interval":
             if not message.text.isnumeric():
                 msg = await message.reply(
@@ -81,6 +94,7 @@ async def process_fsm(message: Message, state: FSMContext):
                 logger.info(f"updated dnd")
                 msg = None
 
+        case "waiting_lang":
         case "waiting_lang":
             if not message.text in SUPPORTED_LANGUAGES:
                 msg = await message.reply("It's not a valid language. Choose en or ru.")
@@ -117,6 +131,7 @@ async def process_fsm(message: Message, state: FSMContext):
     await state.clear()
 
 
+@router.message(Command("settings"))
 @router.message(Command("settings"))
 async def command_settings_handler(message: Message):
     """
@@ -155,6 +170,10 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             message = await callback.message.reply(
                 "What interval do you want? (in hours)"
             )
+        case "int":
+            message = await callback.message.reply(
+                "What interval do you want? (in hours)"
+            )
             await state.set_state(Form.waiting_interval)
         case "dnd":
             # todo format in the message
@@ -166,7 +185,16 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             message = await callback.message.answer(
                 "What language do you speak? (ru/en)"
             )
+        case "lang":
+            message = await callback.message.answer(
+                "What language do you speak? (ru/en)"
+            )
             await state.set_state(Form.waiting_lang)
+        case "tmz":
+            message = await callback.message.reply(
+                f"Choose your timezone:",
+                reply_markup=build_and_adjust(timezones_kb, (3, 2)),
+            )
         case "tmz":
             message = await callback.message.reply(
                 f"Choose your timezone:",
@@ -232,9 +260,21 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
         target_field="utc_offset",
         target_value=offset,
     )
+    await db_client.upsert_field(
+        table="users",
+        key_field="user_id",
+        key_value=user_id,
+        target_field="utc_offset",
+        target_value=offset,
+    )
     logger.info(f"Updated {user_id} in db.")
 
     # answer callback.
+    await callback.message.edit_text(
+        f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there.",
+        reply_markup=build_and_adjust(timezones_kb, (3, 2)),
+    )
+    await callback.answer(f"Selected {name}")
     await callback.message.edit_text(
         f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there.",
         reply_markup=build_and_adjust(timezones_kb, (3, 2)),
