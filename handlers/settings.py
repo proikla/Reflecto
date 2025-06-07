@@ -66,7 +66,6 @@ async def process_fsm(message: Message, state: FSMContext):
     # * Handle different states.
     match curr:
         case "waiting_interval":
-        case "waiting_interval":
             if not message.text.isnumeric():
                 msg = await message.reply(
                     "Please send me the interval you want in hours."
@@ -95,7 +94,6 @@ async def process_fsm(message: Message, state: FSMContext):
                 msg = None
 
         case "waiting_lang":
-        case "waiting_lang":
             if not message.text in SUPPORTED_LANGUAGES:
                 msg = await message.reply("It's not a valid language. Choose en or ru.")
             else:
@@ -109,15 +107,21 @@ async def process_fsm(message: Message, state: FSMContext):
             # ?
             ...
         case "waiting_cr":
-            custom_reminders = re.findall(r"[\w\s\d]+(?=,)|[\w\s]+$", message.text) # <sentence>, <sentence>
+            custom_reminders = re.findall(
+                r"[\w\s\d]+(?=,)|[\w\s]+$", message.text
+            )  # <sentence>, <sentence>
             #! test
             if custom_reminders:
-                db_client.update_field('users','custom_reminders', custom_reminders,'user_id', user_id)
+                db_client.update_field(
+                    "users", "custom_reminders", custom_reminders, "user_id", user_id
+                )
             else:
-                msg = message.reply("Your message is horribly wrong somehow. Try again.")
-        case 'waiting_mm':
-            if message.text.lower() in ['y','yes']:
-                await db_client.upsert_field('users','allow_')
+                msg = message.reply(
+                    "Your message is horribly wrong somehow. Try again."
+                )
+        case "waiting_mm":
+            if message.text.lower() in ["y", "yes"]:
+                await db_client.upsert_field("users", "allow_")
         case _:
             msg = await message.answer("Something went wrong!")
 
