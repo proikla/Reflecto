@@ -1,9 +1,14 @@
+# import aiogram
 from keyboards.kb import build_and_adjust
 from util.constants import messages_to_delete
-from collections import defaultdict
+from handlers.scheduling import scheduler, send_msg
+
+# from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 import re
+from apscheduler.triggers.interval import IntervalTrigger
 from aiogram.filters.base import Filter
+from aiogram.methods.send_message import SendMessage
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
@@ -12,9 +17,11 @@ from util.db import db_client
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 import logging
-from handlers.scheduling import scheduler
+
+# from handlers.scheduling import scheduler
 from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
-from handlers.scheduling import send_msg
+
+# from handlers.scheduling import send_msg
 
 # from polling import scheduler
 
@@ -37,6 +44,8 @@ class InForm(Filter):
         curr = await state.get_state()
         return curr is not None and curr.startswith("Form:")
 
+
+from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -71,14 +80,22 @@ async def process_fsm(message: Message, state: FSMContext):
                     "Please send me the interval you want in hours."
                 )
             else:
+                interval = int(message.text)
                 await db_client.update_field(
-                    "users",
-                    "interval_hours",
-                    message.text,
-                    "user_id",
-                    int(user_id),
+                    "users", "interval_hours", interval, "user_id", user_id
                 )
-                logger.info(f"updated interval_hours for {user_id} userid")
+                job = scheduler.get_job(str(user_id))
+                if job:
+                    # scheduler.remove_job(str(user_id))
+                    scheduler.add_job(
+                        send_msg,
+                        IntervalTrigger(hours=interval),
+                        job.args,
+                        kwargs=job.kwargs,
+                        id=str(user_id),
+                        replace_existing=True,
+                    )
+
                 msg = None
 
         case "waiting_dnd":
@@ -90,9 +107,7 @@ async def process_fsm(message: Message, state: FSMContext):
                 await db_client.update_field(
                     "users", "dnd_hours", message.text, "user_id", user_id
                 )
-                logger.info(f"updated dnd")
                 msg = None
-
         case "waiting_lang":
             if not message.text in SUPPORTED_LANGUAGES:
                 msg = await message.reply("It's not a valid language. Choose en or ru.")
@@ -100,34 +115,70 @@ async def process_fsm(message: Message, state: FSMContext):
                 await db_client.update_field(
                     "users", "language", message.text, "user_id", user_id
                 )
-                logger.info(f"Updated language for {user_id}")
                 msg = None
-
         case "waiting_tmz":
+            msg = None
             # ?
             ...
-        case "waiting_cr":
+        case "waiting_cr":  # todo add comma support "blah, blah blah blah?"
             custom_reminders = re.findall(
-                r"[\w\s\d]+(?=,)|[\w\s]+$", message.text
-            )  # <sentence>, <sentence>
+                r"[\d\w\s\W][^;]+(?=[;])|[^;][\d\w\s\W]+$", message.text
+            )  # <sentence>; <sentence>
             #! test
+            logger.info(custom_reminders)
             if custom_reminders:
-                db_client.update_field(
+                await db_client.update_field(
                     "users", "custom_reminders", custom_reminders, "user_id", user_id
                 )
+                msg = None
             else:
                 msg = message.reply(
                     "Your message is horribly wrong somehow. Try again."
                 )
         case "waiting_mm":
             if message.text.lower() in ["y", "yes"]:
-                await db_client.upsert_field("users", "allow_")
+                value = True
+            elif message.text.lower() in ["n", "no"]:
+                value = False
+            else:
+                value = None
+            if not value is None:
+                await db_client.update_field(
+                    "users", "allow_morning_messages", value, "user_id", user_id
+                )
+            msg = None
+
+        case "waiting_es":  # evening summary (auto-summary)
+            if message.text.isnumeric() and int(message.text) <= 24:
+                await db_client.update_field(
+                    "users", "summary_at_hour", int(message.text), "user_id", user_id
+                )
+
+                utc_offset = await db_client.fetch_field(
+                    field="utc_offset", where_value=user_id
+                )
+                job = scheduler.get_job(f"S{user_id}")
+                if job:
+                    scheduler.add_job(
+                        send_msg,
+                        CronTrigger(hour=int(message.text)),  #! fix, its not in UTC.
+                        [user_id, True],
+                        job.kwargs,
+                        f"S{user_id}",
+                        replace_existing=True,
+                    )
+            msg = None
+
         case _:
             msg = await message.answer("Something went wrong!")
 
     if not msg:
-        msg = message
-    messages_to_delete[user_id].append(msg.message_id)
+        msg = message.message_id
+
+    if isinstance(msg, SendMessage):
+        msg = msg.reply_parameters.message_id
+
+    messages_to_delete[user_id].append(msg)
 
     # await message.answer(f"Gotcha! You chose {message.text}. {curr}")
     await command_settings_handler(message)
@@ -135,7 +186,6 @@ async def process_fsm(message: Message, state: FSMContext):
     await state.clear()
 
 
-@router.message(Command("settings"))
 @router.message(Command("settings"))
 async def command_settings_handler(message: Message):
     """
@@ -145,8 +195,8 @@ async def command_settings_handler(message: Message):
 
     # get user interval
     user_settings = await db_client.exec(
-        "select interval_hours, utc_offset, dnd_hours, language from users where user_id = %s",
-        user_id,
+        "select interval_hours, utc_offset, dnd_hours, language, allow_morning_messages, summary_at_hour, custom_reminders from users where user_id = %s",
+        (user_id,),
     )
     user_settings = user_settings[0]
 
@@ -155,7 +205,10 @@ async def command_settings_handler(message: Message):
 Interval hours: {user_settings[0]}
 Utc offset: {user_settings[1]}
 Do not disturb hours: {user_settings[2]}
-Language: {user_settings[3]}""",
+Language: {user_settings[3]}
+Morning messages: {'allowed' if user_settings[4] else 'disallowed'}
+Auto-summary: {f'at {user_settings[5]}' if user_settings[5] else 'turned off'}
+""",
         reply_markup=build_and_adjust(settings_kb, (3, 2)),
     )
     messages_to_delete[user_id].append(msg.message_id)
@@ -174,21 +227,12 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             message = await callback.message.reply(
                 "What interval do you want? (in hours)"
             )
-        case "int":
-            message = await callback.message.reply(
-                "What interval do you want? (in hours)"
-            )
             await state.set_state(Form.waiting_interval)
         case "dnd":
-            # todo format in the message
             message = await callback.message.answer(
                 "What time you don't want me to disturb you in? (range from_hour-to_hour. ex: 22-7)"
             )
             await state.set_state(Form.waiting_dnd)
-        case "lang":
-            message = await callback.message.answer(
-                "What language do you speak? (ru/en)"
-            )
         case "lang":
             message = await callback.message.answer(
                 "What language do you speak? (ru/en)"
@@ -199,32 +243,36 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
                 f"Choose your timezone:",
                 reply_markup=build_and_adjust(timezones_kb, (3, 2)),
             )
-        case "tmz":
-            message = await callback.message.reply(
-                f"Choose your timezone:",
-                reply_markup=build_and_adjust(timezones_kb, (3, 2)),
-            )
-            # await state.set_state(Form.waiting_tmz)
+
         case "cr":  # custom reminders
             usr_custom_reminders = await db_client.exec(
-                "SELECT custom_reminders FROM users WHERE user_id = %s", (user_id,)
+                "SELECT custom_reminders FROM users WHERE user_id = %s",
+                (user_id,),
+                fetchall=False,
             )
+            logger.info(f"{usr_custom_reminders=}")
+            if not usr_custom_reminders[0]:
+                usr_custom_reminders = ["None"]
+
             message = await callback.message.reply(
                 f"""
-List custom reminders you'd like to add, separated by a comma.
+List custom reminders you'd like to add, separated by a semicolon.
 Your current ones are:
-<code>{', '.join(usr_custom_reminders)}</code>
+<code>{'; '.join(usr_custom_reminders[0])}</code>
                                                    """
             )
             await state.set_state(Form.waiting_cr)
-        case "mm":
+        case "mm":  # morning messages
             message = await callback.message.reply(
                 f"Do you want to get morning messages? y/n"
             )
-        case "es":
+            await state.set_state(Form.waiting_mm)
+
+        case "es":  # evening summaries
             message = await callback.message.reply(
-                f"What time do you want to get evening summary at? 0 if you don't want to get summaries."
+                f"What time do you want to get auto summary at? 0 if you don't want to get summaries.\nExample: 20"
             )
+            await state.set_state(Form.waiting_es)
         case _:
             message = await callback.message.answer("Something went wrong.")
 

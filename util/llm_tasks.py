@@ -12,10 +12,11 @@ def prompt_whisper(audio: bytes):
     client = InferenceClient(
         provider="hf-inference",
         api_key=f"{API_KEY}",
-        headers={"Content-Type": "audio/ogg"}
+        headers={"Content-Type": "audio/ogg"},
     )
     response = client.automatic_speech_recognition(
-        audio, model='openai/whisper-large-v3-turbo')
+        audio, model="openai/whisper-large-v3-turbo"
+    )
 
     print("RECOGNIZED TEXT FROM VOICE:", response.text)
     return response.text
@@ -23,26 +24,17 @@ def prompt_whisper(audio: bytes):
 
 # todo make it async!
 def prompt_deepseek(sysprompt, usrprompt, model="deepseek-ai/DeepSeek-R1"):
-    client = InferenceClient(
-        api_key=API_KEY,
-        provider="novita"
-    )
+    client = InferenceClient(api_key=API_KEY, provider="novita")
 
     messages = [
-        {
-            "role": "system",
-            "content": f"{sysprompt}"
-        },
-        {
-            "role": "user",
-            "content": f"{usrprompt}"
-        }
+        {"role": "system", "content": f"{sysprompt}"},
+        {"role": "user", "content": f"{usrprompt}"},
     ]
 
     completion = client.chat.completions.create(
         model=model,
         messages=messages,
-        max_tokens=0,                   # change maybe
+        max_tokens=0,  # change maybe
         temperature=0.7,
     )
 
@@ -51,17 +43,16 @@ def prompt_deepseek(sysprompt, usrprompt, model="deepseek-ai/DeepSeek-R1"):
 
 
 # * PROMPTS:
-def get_discipline_level_from_entry(entry) -> str:
-    ...
+def get_discipline_level_from_entry(entry) -> str: ...
 
 
-def make_day_summary_from_json(entries, user_context='') -> str:
+def make_day_summary(entries, user_context="") -> str:
     """"""
     # #! assuming json is there
     # with open(json_file_path, 'r') as file:
     #     contents = file.read()
 
-    user_context = ''
+    user_context = ""
     prompt = f"""
 You are a **Daily Summary Report Generator**.  
 Your task: from the user’s diary entries and existing context, produce  
@@ -111,7 +102,7 @@ USER_CONTEXT: {user_context}
 """
     response = prompt_deepseek(prompt, usr_prompt)
     # return response
-    return response[response.find('/think>')+7::].strip()
+    return response[response.find("/think>") + 7 : :].strip()
 
 
 def get_json_from_journal_entry(entry_text) -> str:
@@ -153,7 +144,7 @@ Use only information explicitly stated in TEXT_ENTRY. Output valid JSON and noth
     # response.replace('`', '')
     # response.replace('json', '')
     # print(response)
-    return response[response.find('/think>')+7::].strip()
+    return response[response.find("/think>") + 7 : :].strip()
 
 
 # !testing

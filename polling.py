@@ -30,15 +30,14 @@ dp = Dispatcher()
 TOKEN = APIKEYS.token
 
 
-bot = Bot(token=TOKEN, default=DefaultBotProperties(
-    parse_mode=ParseMode.HTML))
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 
 commands = [
-    BotCommand(command='start', description='Get started'),
-    BotCommand(command='settings', description='Configure the bot'),
-    BotCommand(command='stats', description='get your mood stats'),
-    BotCommand(command='summary', description='Make a summary of your day.')
+    BotCommand(command="start", description="Get started"),
+    BotCommand(command="settings", description="Configure the bot"),
+    BotCommand(command="stats", description="get your mood stats"),
+    BotCommand(command="summary", description="Make a summary of your day."),
 ]
 
 
@@ -55,6 +54,7 @@ async def main() -> None:
     dp.include_router(stats_router)
     dp.include_router(summary_router)
     dp.include_router(scheduling_router)
+
     # lowest priority goes to journal.
     dp.include_router(journal_router)
 
@@ -62,7 +62,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    if os.name == 'nt':
+    if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())

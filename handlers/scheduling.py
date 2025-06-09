@@ -1,16 +1,22 @@
+import asyncio
 import logging
 import random
 from APIKEYS import TOKEN
-from util.constants import DEFAULT_RU_REMINDERS
+from handlers.summary import get_user_summary
+
+# from util.constants import DEFAULT_RU_REMINDERS
 from util.db import db_client
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.date import DateTrigger
+from apscheduler.triggers.cron import CronTrigger
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from datetime import UTC, datetime, timedelta
 
+from util.llm_tasks import make_day_summary
 from aiogram import F, Bot, Router
 
 router = Router()
@@ -20,14 +26,20 @@ bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 logger = logging.getLogger(__name__)
 
 
-async def send_msg(user_id):
+async def send_msg(user_id, summary=False):
     "Send user a reminder message."
 
+    if summary:
+        text = await get_user_summary(user_id, force=True)
+        await bot.send_message(user_id, f"{text[0]}")
+        return
+
     res = await db_client.exec(
-        "SELECT next_message, interval_hours, dnd_hours, utc_offset FROM users WHERE user_id = %s",
+        "SELECT next_message, interval_hours, dnd_hours, utc_offset, custom_reminders FROM users WHERE user_id = %s",
         (user_id,),
+        fetchall=False,
     )
-    next_message, interval, dnd_hours, utc_offset = res[0]
+    next_message, interval, dnd_hours, utc_offset, usr_reminders = res
 
     # prevent sending messages at DND hours.
     if dnd_hours:
@@ -46,10 +58,12 @@ async def send_msg(user_id):
 
     # pick message to send for a user as a reminder.
     if next_message == "DEFAULT":
-        text = random.choice(DEFAULT_RU_REMINDERS).format(i=interval)
-    else:
-        # if not default, it means LLM set it. [TODO]
-        # update to default again, but send this custom reminder.
+        text = random.choice(usr_reminders).format(i=interval)
+    else:  # llm has generated next message based on context TODO
+        await bot.send_message(user_id, next_message)
+        await db_client.update_field(
+            "users", "next_message", "DEFAULT", "user_id", user_id
+        )
         ...
 
     await bot.send_message(user_id, text)
@@ -57,14 +71,26 @@ async def send_msg(user_id):
 
 @router.startup()
 async def on_startup():
-    "set up user reminders on startup"
+
+    # * "set up user reminders on startup"
     scheduler.start()
-    users = await db_client.exec(f"SELECT user_id, interval_hours FROM users")
-    for user, interval in users:
+    users = await db_client.exec(
+        f"SELECT user_id, interval_hours, summary_at_hour, utc_offset FROM users"
+    )
+    for id, interval, summary_hour, utc_offset in users:
         scheduler.add_job(
             send_msg,
             IntervalTrigger(hours=interval),
-            args=[user],
-            id=str(user),
+            args=[id],
+            id=str(id),
         )
-        logger.info(f"{user}, {interval}")
+
+        # * evening auto summary
+        if summary_hour:
+            scheduler.add_job(
+                send_msg,
+                CronTrigger(hour=summary_hour - utc_offset),
+                [id, True],
+                id="S" + str(id),
+            )
+            logger.info(f"Summary scheduled for {id} at {summary_hour-utc_offset} UTC")
