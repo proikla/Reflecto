@@ -1,14 +1,14 @@
-import asyncio
-from psycopg import AsyncConnection, sql
-from APIKEYS import DBPASS
+# stdlib
 import logging
 
-DBNAME = "tg-helper"
-USER = "postgres"
+# local
+from APIKEYS import DBPASS
+
+# third-party
+from psycopg import AsyncConnection, sql
 
 DBNAME = "tg-helper"
 USER = "postgres"
-
 
 DB_DSN = f"dbname={DBNAME} user={USER} password={DBPASS}"
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class DBClient:
         self._min = min_size
         self._max = max_size
 
-    async def init(self):
+    async def init(self):  # ?
         # must be awaited once at startup
         self._pool = await AsyncConnection.connect(self._dsn)
         self._pool = await AsyncConnection.connect(self._dsn)

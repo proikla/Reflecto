@@ -1,32 +1,28 @@
-# import aiogram
+# stdlib
+import re
+import logging
+from datetime import UTC, datetime, timedelta
+
+# local
 from keyboards.kb import build_and_adjust
 from util.constants import SERVER_UTC_OFFSET, messages_to_delete
 from handlers.scheduling import scheduler, send_msg
+from util.constants import SUPPORTED_LANGUAGES
+from util.db import db_client
+from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
 
-# from collections import defaultdict
-from datetime import UTC, datetime, timedelta
-import re
+# third-party
 from apscheduler.triggers.interval import IntervalTrigger
 from aiogram.filters.base import Filter
 from aiogram.methods.send_message import SendMessage
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
-from util.constants import SUPPORTED_LANGUAGES
-from util.db import db_client
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-import logging
-
-# from handlers.scheduling import scheduler
-from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
-
-# from handlers.scheduling import send_msg
-
-# from polling import scheduler
 
 
-# ? rework
+# ? rename
 class Form(StatesGroup):
     "usr input states"
 
@@ -161,7 +157,7 @@ async def process_fsm(message: Message, state: FSMContext):
                     scheduler.add_job(
                         send_msg,
                         CronTrigger(hour=allow_mm + SERVER_UTC_OFFSET),
-                        [user_id, False, True], # probs use kwargs instead
+                        [user_id, False, True],  # probs use kwargs instead
                         replace_existing=True,
                     )
 

@@ -1,14 +1,17 @@
+# third-party
 import asyncio
-import datetime
-import json
-import logging
 from aiogram import Router
 from aiogram.filters import Command
+from aiogram.types import Message
+
+# stdlib
+import datetime
+import logging
+
+# local
 import util.llm_tasks as llm_tasks
 from util.db import db_client
-from aiogram.types import Message
 from keyboards.kb import *
-from util.constants import messages_to_delete
 
 router = Router()
 logger = logging.getLogger(__name__)

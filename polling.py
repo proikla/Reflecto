@@ -1,13 +1,8 @@
 # stdlib
-import datetime
 import logging
 import asyncio
 import os
-import random
 import sys
-import matplotlib.pyplot as plt
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 
 # third-party
 from aiogram import Bot, Dispatcher
@@ -24,6 +19,7 @@ from handlers.journal import router as journal_router
 from handlers.stats import router as stats_router
 from handlers.summary import router as summary_router
 from handlers.scheduling import router as scheduling_router
+from handlers.help import router as help_router
 
 logger = logging.getLogger(__name__)
 dp = Dispatcher()
@@ -34,15 +30,18 @@ bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
 
 commands = [
-    BotCommand(command="start", description="Get started"),
-    BotCommand(command="settings", description="Configure the bot"),
-    BotCommand(command="stats", description="get your mood stats"),
-    BotCommand(command="summary", description="Make a summary of your day."),
+    BotCommand(command="start", description="get started."),
+    BotCommand(command="settings", description="configure the bot."),
+    BotCommand(command="stats", description="get your mood stats."),
+    BotCommand(command="summary", description="make a summary of your day."),
+    BotCommand(command="help", description="learn what can you do with Reflecto."),
 ]
 
 
+# todo add /help command.
+# todo add "random" or "adaptive" interval.
+# todo add /entries command. (interactive, inline.)
 async def main() -> None:
-    # Initialize Bot instance with default bot properties which will be passed to all API calls
     # register commands
     await bot.set_my_commands(commands)
 
@@ -54,6 +53,7 @@ async def main() -> None:
     dp.include_router(stats_router)
     dp.include_router(summary_router)
     dp.include_router(scheduling_router)
+    dp.include_router(help_router)
 
     # lowest priority goes to journal.
     dp.include_router(journal_router)

@@ -1,8 +1,13 @@
-import io
-from APIKEYS import HFAPI as API_KEY
+# stdlib
 import json
 import os
+import io
+
+# third-party
 from huggingface_hub import InferenceClient
+
+# local
+from APIKEYS import HFAPI as API_KEY
 
 
 def prompt_whisper(audio: bytes):

@@ -4,7 +4,7 @@ from constants import messages_to_delete
 logger = logging.getLogger(__name__)
 
 
-# todo rename
+# todo rename, rework 
 async def delete_misc_messages(message, user_id):
 
     try:

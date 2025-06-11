@@ -1,12 +1,17 @@
+# stdlib
 import asyncio
 import logging
 import random
+from datetime import UTC, datetime, timedelta
+
+# local
 from APIKEYS import TOKEN
 from handlers.summary import get_user_summary
-
-# from util.constants import DEFAULT_RU_REMINDERS
 from util.constants import SERVER_UTC_OFFSET
 from util.db import db_client
+from util.llm_tasks import make_day_summary, prompt_deepseek
+
+# third-party
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.date import DateTrigger
@@ -15,10 +20,8 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from datetime import UTC, datetime, timedelta
-
-from util.llm_tasks import make_day_summary, prompt_deepseek
 from aiogram import F, Bot, Router
+
 
 router = Router()
 scheduler = AsyncIOScheduler()
