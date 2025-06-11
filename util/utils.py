@@ -3,6 +3,7 @@ from constants import messages_to_delete
 
 logger = logging.getLogger(__name__)
 
+
 # todo rename
 async def delete_misc_messages(message, user_id):
 
@@ -15,7 +16,6 @@ async def delete_misc_messages(message, user_id):
 
     except Exception as e:
         logger.exception(f"Exception while trying to delete messages: {e}")
-
 
 
 # def format_date(dt: datetime, include_time: bool = True) -> str:

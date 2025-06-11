@@ -22,35 +22,42 @@ def prompt_whisper(audio: bytes):
     return response.text
 
 
-# todo make it async!
-def prompt_deepseek(sysprompt, usrprompt, model="deepseek-ai/DeepSeek-R1"):
+def prompt_deepseek(sysprompt: str, usrprompt: str, model="deepseek-ai/DeepSeek-R1"):
     client = InferenceClient(api_key=API_KEY, provider="novita")
 
     messages = [
-        {"role": "system", "content": f"{sysprompt}"},
-        {"role": "user", "content": f"{usrprompt}"},
+        {"role": "system", "content": f"{sysprompt.strip()}"},
+        {"role": "user", "content": f"{usrprompt.strip()}"},
     ]
 
     completion = client.chat.completions.create(
         model=model,
         messages=messages,
         max_tokens=0,  # change maybe
-        temperature=0.7,
+        temperature=0.4,  # fosho change da thang
     )
 
-    reply = completion.choices[0].message.content
+    reply = completion.choices[0].message.content  # tf is choices #?
     return reply
 
 
 # * PROMPTS:
-def get_discipline_level_from_entry(entry) -> str: ...
+def generate_morning_message(user_context: str) -> str:
+    prompt = f"""
+You're a morning message generator. You will get user context in JSON format and return a morning message based on it.
+Your task is to encrourage user to plan their day and to finish their long-term tasks (see CONTEXT). You should also remind user to do their unfinished yesterday's tasks.
+"""
+
+    response = prompt_deepseek(prompt, user_context)
+    return response[response.find("/think>") + 7 : :].strip()
 
 
-def make_day_summary(entries, user_context="") -> str:
-    """"""
-    # #! assuming json is there
-    # with open(json_file_path, 'r') as file:
-    #     contents = file.read()
+def get_discipline_level_from_entry(entry) -> str: ...  # TODO
+
+
+def make_day_summary(
+    entries, user_context=""
+) -> str:  # TODO: should also renew user context! see TODO.md
 
     user_context = ""
     prompt = f"""

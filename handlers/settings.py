@@ -1,6 +1,6 @@
 # import aiogram
 from keyboards.kb import build_and_adjust
-from util.constants import messages_to_delete
+from util.constants import SERVER_UTC_OFFSET, messages_to_delete
 from handlers.scheduling import scheduler, send_msg
 
 # from collections import defaultdict
@@ -120,7 +120,7 @@ async def process_fsm(message: Message, state: FSMContext):
             msg = None
             # ?
             ...
-        case "waiting_cr":  # todo add comma support "blah, blah blah blah?"
+        case "waiting_cr":
             custom_reminders = re.findall(
                 r"[\d\w\s\W][^;]+(?=[;])|[^;][\d\w\s\W]+$", message.text
             )  # <sentence>; <sentence>
@@ -135,28 +135,54 @@ async def process_fsm(message: Message, state: FSMContext):
                 msg = message.reply(
                     "Your message is horribly wrong somehow. Try again."
                 )
-        case "waiting_mm":
-            if message.text.lower() in ["y", "yes"]:
-                value = True
-            elif message.text.lower() in ["n", "no"]:
-                value = False
+        case (
+            "waiting_mm"
+        ):  # todo rework. 0 to turn off, any other value < 12 to schedule a morning message
+            if not message.text.isnumeric() and message.text < 0 or message.text > 24:
+                msg = message.answer(
+                    "Your message has to be a number (0-24)."
+                )  # test TODO
             else:
-                value = None
-            if not value is None:
+                # update in db
                 await db_client.update_field(
-                    "users", "allow_morning_messages", value, "user_id", user_id
+                    "users",
+                    "allow_morning_messages",
+                    int(message.text),
+                    "user_id",
+                    user_id,
                 )
-            msg = None
+                allow_mm = await db_client.exec(
+                    f"SELECT allow_morning_messages FROM users"
+                )
+
+                # reschedule morning message
+                job = scheduler.get_job(f"M{user_id}")
+                if job:
+                    scheduler.add_job(
+                        send_msg,
+                        CronTrigger(hour=allow_mm + SERVER_UTC_OFFSET),
+                        [user_id, False, True], # probs use kwargs instead
+                        replace_existing=True,
+                    )
+
+                msg = None
 
         case "waiting_es":  # evening summary (auto-summary)
-            if message.text.isnumeric() and int(message.text) <= 24:
+            if (
+                message.text.isnumeric() and int(message.text) < 24
+            ):  # ? fix: CronTrigger can't be > 23
+                usr_utc_offset = await db_client.fetch_field(
+                    field="utc_offset", where_value=user_id
+                )  #! test
+
                 await db_client.update_field(
-                    "users", "summary_at_hour", int(message.text), "user_id", user_id
+                    "users",
+                    "summary_at_hour",
+                    int(message.text) - usr_utc_offset,  # store summary_at_hour in UTC.
+                    "user_id",
+                    user_id,
                 )
 
-                utc_offset = await db_client.fetch_field(
-                    field="utc_offset", where_value=user_id
-                )
                 job = scheduler.get_job(f"S{user_id}")
                 if job:
                     scheduler.add_job(
@@ -167,6 +193,7 @@ async def process_fsm(message: Message, state: FSMContext):
                         f"S{user_id}",
                         replace_existing=True,
                     )
+
             msg = None
 
         case _:
