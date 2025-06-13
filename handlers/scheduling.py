@@ -114,7 +114,7 @@ async def on_startup():
         if summary_hour:
             scheduler.add_job(
                 send_msg,
-                CronTrigger(hour=summary_hour + SERVER_UTC_OFFSET),
+                CronTrigger(hour=(summary_hour + SERVER_UTC_OFFSET) % 24),
                 [id, True],
                 id=f"S{id}",
             )

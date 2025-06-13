@@ -1,21 +1,46 @@
 import logging
-from constants import messages_to_delete
+
+# from constants import messages_to_delete
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
+from aiogram.filters.base import Filter
 
 logger = logging.getLogger(__name__)
 
 
-# todo rename, rework 
-async def delete_misc_messages(message, user_id):
+# # todo rename, rework
+# async def delete_misc_messages(message, user_id):
 
-    try:
-        if messages := messages_to_delete[user_id]:
-            await message.bot.delete_messages(message.chat.id, messages)
+#     try:
+#         if messages := messages_to_delete[user_id]:
+#             await message.bot.delete_messages(message.chat.id, messages)
 
-            # rework's needed perhaps
-            messages_to_delete[user_id] = []
+#             # rework's needed perhaps
+#             messages_to_delete[user_id] = []
 
-    except Exception as e:
-        logger.exception(f"Exception while trying to delete messages: {e}")
+#     except Exception as e:
+#         logger.exception(f"Exception while trying to delete messages: {e}")
+
+
+class SettingsInputStates(StatesGroup):
+    "usr input states"
+
+    waiting_interval = State()
+    waiting_dnd = State()  # waiting DoNotDisturb
+    waiting_tmz = State()
+    waiting_lang = State()
+    waiting_cr = State()  # custom reminders
+    waiting_mm = State()  # morning message
+    waiting_es = State()  # evening summary
+
+    tmz_setup = State()  #
+
+
+class InSettingsInputStates(Filter):
+    async def __call__(self, message: Message, state: FSMContext):
+        curr = await state.get_state()
+        return curr is not None and curr.startswith("SettingsInputStates:")  #! test
 
 
 # def format_date(dt: datetime, include_time: bool = True) -> str:

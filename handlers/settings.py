@@ -4,6 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 # local
+from handlers.help import help_handler
 from keyboards.kb import build_and_adjust
 from util.constants import SERVER_UTC_OFFSET, messages_to_delete
 from handlers.scheduling import scheduler, send_msg
@@ -13,35 +14,16 @@ from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
 
 # third-party
 from apscheduler.triggers.interval import IntervalTrigger
-from aiogram.filters.base import Filter
 from aiogram.methods.send_message import SendMessage
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
 
-# ? rename
-class Form(StatesGroup):
-    "usr input states"
-
-    waiting_interval = State()
-    waiting_dnd = State()
-    waiting_tmz = State()
-    waiting_lang = State()
-    waiting_cr = State()  # custom reminders
-    waiting_mm = State()  # morning message
-    waiting_es = State()  # evening summary
-
-
-class InForm(Filter):
-    async def __call__(self, message: Message, state: FSMContext):
-        curr = await state.get_state()
-        return curr is not None and curr.startswith("Form:")
-
-
 from apscheduler.triggers.cron import CronTrigger
+
+from util.utils import InSettingsInputStates, SettingsInputStates
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +36,7 @@ def next_midnight():
     )
 
 
-@router.message(InForm(), F.text)
+@router.message(InSettingsInputStates())
 async def process_fsm(message: Message, state: FSMContext):
     """
     Handle messages with FSMContext present, meaning, messages that wait for a value from user. Used to configure settings.
@@ -64,7 +46,11 @@ async def process_fsm(message: Message, state: FSMContext):
     messages_to_delete[user_id].append(message.message_id)
 
     curr = await state.get_state()  # Form:name_of_the_state
-    curr = curr[5:]
+    curr = curr[20:]
+
+    if curr == "tmz_setup":
+        await message.answer("Your tmz isnt setyup")
+        return
 
     # delete user answer
     messages_to_delete[user_id].append(message.message_id)
@@ -115,7 +101,9 @@ async def process_fsm(message: Message, state: FSMContext):
         case "waiting_tmz":
             msg = None
             # ?
+            await state.clear()
             ...
+
         case "waiting_cr":
             custom_reminders = re.findall(
                 r"[\d\w\s\W][^;]+(?=[;])|[^;][\d\w\s\W]+$", message.text
@@ -203,7 +191,6 @@ async def process_fsm(message: Message, state: FSMContext):
 
     messages_to_delete[user_id].append(msg)
 
-    # await message.answer(f"Gotcha! You chose {message.text}. {curr}")
     await command_settings_handler(message)
     # await message.delete()
     await state.clear()
@@ -230,7 +217,7 @@ Utc offset: {user_settings[1]}
 Do not disturb hours: {user_settings[2]}
 Language: {user_settings[3]}
 Morning messages: {'allowed' if user_settings[4] else 'disallowed'}
-Auto-summary: {f'at {user_settings[5]}' if user_settings[5] else 'turned off'}
+Auto-summary: {f'at {user_settings[5]}:00' if user_settings[5] else 'turned off'}
 """,
         reply_markup=build_and_adjust(settings_kb, (3, 2)),
     )
@@ -250,17 +237,17 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             message = await callback.message.reply(
                 "What interval do you want? (in hours)"
             )
-            await state.set_state(Form.waiting_interval)
+            await state.set_state(SettingsInputStates.waiting_interval)
         case "dnd":
             message = await callback.message.answer(
                 "What time you don't want me to disturb you in? (range from_hour-to_hour. ex: 22-7)"
             )
-            await state.set_state(Form.waiting_dnd)
+            await state.set_state(SettingsInputStates.waiting_dnd)
         case "lang":
             message = await callback.message.answer(
                 "What language do you speak? (ru/en)"
             )
-            await state.set_state(Form.waiting_lang)
+            await state.set_state(SettingsInputStates.waiting_lang)
         case "tmz":
             message = await callback.message.reply(
                 f"Choose your timezone:",
@@ -284,18 +271,18 @@ Your current ones are:
 <code>{'; '.join(usr_custom_reminders[0])}</code>
                                                    """
             )
-            await state.set_state(Form.waiting_cr)
+            await state.set_state(SettingsInputStates.waiting_cr)
         case "mm":  # morning messages
             message = await callback.message.reply(
                 f"Do you want to get morning messages? y/n"
             )
-            await state.set_state(Form.waiting_mm)
+            await state.set_state(SettingsInputStates.waiting_mm)
 
         case "es":  # evening summaries
             message = await callback.message.reply(
                 f"What time do you want to get auto summary at? 0 if you don't want to get summaries.\nExample: 20"
             )
-            await state.set_state(Form.waiting_es)
+            await state.set_state(SettingsInputStates.waiting_es)
         case _:
             message = await callback.message.answer("Something went wrong.")
 
@@ -335,23 +322,27 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
         target_field="utc_offset",
         target_value=offset,
     )
-    await db_client.upsert_field(
-        table="users",
-        key_field="user_id",
-        key_value=user_id,
-        target_field="utc_offset",
-        target_value=offset,
-    )
+
     logger.info(f"Updated {user_id} in db.")
 
     # answer callback.
+    if await state.get_state() == "SettingsInputStates:tmz_setup":
+        text = f"Timezone is set! Here's what you can do with <b>Reflecto</b>:"
+        help = True
+        markup = None
+        await state.clear()
+    else:
+        text = (
+            f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there."
+        )
+        help = False
+        markup = (build_and_adjust(timezones_kb, (3, 2)),)
+
     await callback.message.edit_text(
-        f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there.",
-        reply_markup=build_and_adjust(timezones_kb, (3, 2)),
+        text,
+        reply_markup=markup,
     )
     await callback.answer(f"Selected {name}")
-    await callback.message.edit_text(
-        f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there.",
-        reply_markup=build_and_adjust(timezones_kb, (3, 2)),
-    )
-    await callback.answer(f"Selected {name}")
+
+    if help:
+        await help_handler(callback.message, state, True)

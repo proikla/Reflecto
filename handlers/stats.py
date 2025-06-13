@@ -1,5 +1,5 @@
 # stdlib
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, UTC, time
 import io
 import logging
 
@@ -121,7 +121,7 @@ async def stats_command_handler(message: Message) -> None:
         range_days = 0
 
     elif params[1].isnumeric():
-        range_days = params[1]
+        range_days = int(params[1])
     else:
         match params[1].lower():
             case "all":
@@ -156,11 +156,11 @@ async def stats_command_handler(message: Message) -> None:
     #! test
     raw_data = []
     count = 0
-    for dt, mood in result:
+    for mood, dt in result:
         if count >= range_days:  #!
             break
 
-        raw_data.append(dt + timedelta(hours=utc_offset_result), float(mood))
+        raw_data.append((dt + timedelta(hours=utc_offset_result), float(mood)))
         count += 1
 
     # raw_data = [
@@ -199,7 +199,7 @@ async def stats_command_handler(message: Message) -> None:
     days = timedelta(days=1)
     while curr <= end_date:
         # place the tick at midnight of that day
-        tick_dates.append(datetime.combine(curr, datetime.time()))
+        tick_dates.append(datetime.combine(curr, time()))
         curr += days
 
     # === Plotting ===

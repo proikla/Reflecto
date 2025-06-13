@@ -41,6 +41,14 @@ commands = [
 # todo add /help command.
 # todo add "random" or "adaptive" interval.
 # todo add /entries command. (interactive, inline.)
+# todo remove redundant logging
+# todo add option to remove reminders at all
+# todo weekday routine tasks
+# todo /calendar + search button <-- "01.01.25"
+# todo rework deleting misc messages
+# todo: add "processed" tag to an entry. Will be useful when entries are proccessed in a bunch.
+
+
 async def main() -> None:
     # register commands
     await bot.set_my_commands(commands)

@@ -13,3 +13,7 @@ util/__pycache__/constants.cpython-313.pyc
 util/__pycache__/db.cpython-313.pyc
 handlers/__pycache__/scheduling.cpython-313.pyc
 ACTUALTODO.MD
+handlers/__pycache__/help.cpython-313.pyc
+util/__pycache__/llm_tasks.cpython-313.pyc
+util/__pycache__/utils.cpython-313.pyc
+util/__pycache__/llm_tasks.cpython-313.pyc

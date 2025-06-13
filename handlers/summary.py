@@ -124,6 +124,7 @@ async def summary_command_handler(message: Message, state):
         await db_client.exec(
             "INSERT INTO summaries (user_id, summary_text) VALUES (%s, %s)",
             (user_id, summary),
+            fetchall=False,
         )
         await message.reply(f"{summary[0][0]}")
     except Exception as e:
