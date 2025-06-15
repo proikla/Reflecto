@@ -9,8 +9,8 @@ from aiogram.filters import Command
 
 # local
 from util.db import db_client
-from keyboards.kb import settings_firsttime_kb
-from util.utils import SettingsInputStates, InSettingsInputStates
+from util.inline_keyboards import settings_firsttime_kb
+from util.states import SettingsInputStates, InSettingsInputStates
 
 logger = logging.getLogger(__name__)
 

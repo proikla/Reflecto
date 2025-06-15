@@ -11,7 +11,7 @@ import logging
 # local
 import util.llm_tasks as llm_tasks
 from util.db import db_client
-from keyboards.kb import *
+from util.inline_keyboards import *
 
 router = Router()
 logger = logging.getLogger(__name__)

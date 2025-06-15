@@ -6,7 +6,7 @@ from aiogram.types import Message
 # local
 from util.db import db_client
 from util.constants import messages_to_delete
-from keyboards.kb import *
+from util.inline_keyboards import *
 from handlers.help import help_handler
 
 router = Router()

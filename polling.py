@@ -20,6 +20,7 @@ from handlers.stats import router as stats_router
 from handlers.summary import router as summary_router
 from handlers.scheduling import router as scheduling_router
 from handlers.help import router as help_router
+from handlers.entries import router as entries_router
 
 logger = logging.getLogger(__name__)
 dp = Dispatcher()
@@ -35,16 +36,23 @@ commands = [
     BotCommand(command="stats", description="get your mood stats."),
     BotCommand(command="summary", description="make a summary of your day."),
     BotCommand(command="help", description="learn what can you do with Reflecto."),
+    BotCommand(command="entries", description="view your entries"),
 ]
+#! HUGE REFACTOR!! PLEASE!! ALL OF IT!!!
 
-
-# todo add /help command.
 # todo add "random" or "adaptive" interval.
-# todo add /entries command. (interactive, inline.)
 # todo remove redundant logging
 # todo add option to remove reminders at all
-# todo weekday routine tasks
-# todo /calendar + search button <-- "01.01.25"
+# todo add time of reminder in context. If next_message is going to be generated, it will take into account the time that the message will be generated on.
+# todo weekday routine tasks:
+"""
+Things that are always planned to some day.
+i.e:
+Monday - gym (-> Morning OR next_message be smth like: "are you at the gym already?")
+Tuesday - singing
+Wednesday - None
+...
+"""
 # todo rework deleting misc messages
 # todo: add "processed" tag to an entry. Will be useful when entries are proccessed in a bunch.
 
@@ -62,6 +70,7 @@ async def main() -> None:
     dp.include_router(summary_router)
     dp.include_router(scheduling_router)
     dp.include_router(help_router)
+    dp.include_router(entries_router)
 
     # lowest priority goes to journal.
     dp.include_router(journal_router)

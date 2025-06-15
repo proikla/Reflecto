@@ -15,7 +15,7 @@ import numpy as np
 
 # local
 from util.db import db_client
-from keyboards.kb import *
+from util.inline_keyboards import *
 
 
 router = Router()

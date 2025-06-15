@@ -5,12 +5,12 @@ from datetime import UTC, datetime, timedelta
 
 # local
 from handlers.help import help_handler
-from keyboards.kb import build_and_adjust
+from util.inline_keyboards import build_and_adjust
 from util.constants import SERVER_UTC_OFFSET, messages_to_delete
 from handlers.scheduling import scheduler, send_msg
 from util.constants import SUPPORTED_LANGUAGES
 from util.db import db_client
-from keyboards.kb import settings_kb, settings_firsttime_kb, timezones_kb
+from util.inline_keyboards import settings_kb, settings_firsttime_kb, timezones_kb
 
 # third-party
 from apscheduler.triggers.interval import IntervalTrigger
@@ -23,7 +23,7 @@ from aiogram.fsm.context import FSMContext
 
 from apscheduler.triggers.cron import CronTrigger
 
-from util.utils import InSettingsInputStates, SettingsInputStates
+from util.states import InSettingsInputStates, SettingsInputStates
 
 logger = logging.getLogger(__name__)
 
