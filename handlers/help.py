@@ -50,7 +50,6 @@ Here's a couple of things Reflecto can do:
         )
     else:
         response = True
-    # logger.info(response)
     # if the user is using Reflecto for the first time, prompt them to change TMZ
     if not response:
         markup = settings_firsttime_kb

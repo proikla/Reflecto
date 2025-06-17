@@ -71,7 +71,7 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             blob.seek(0)
             blob = blob.read()
             # += in case there is text already along with the voice message (not gonna happen tho but why not)
-            logger.info("Trying to prompt whisper")
+            # logger.info("Trying to prompt whisper")
             get_whisper_future = loop.run_in_executor(None, lt.prompt_whisper, blob)
             try:
                 whisper_text = await get_whisper_future
@@ -79,7 +79,7 @@ async def message_handler(message: Message, state: FSMContext) -> None:
                 logger.exception(f"Exception while waiting for whisper: {e}")
 
             text += whisper_text
-            logger.info(f"Got text: {whisper_text} from whisper")
+            logger.info(f"Got text: '{whisper_text}' from whisper")
 
         # length check to prevent deepseek from hallucinating.
         if text.count(" ") < 5:
@@ -108,16 +108,6 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             await message.reply("Error. Please try again.")
             return
 
-        # # *validate JSON* ?maybe redundant.
-        # schema = {
-        #     "type": "object",
-        #     "properties": {
-        #         "entry": {"type": "string"},
-        #         "plans": {"type": "array"},
-        #         "done": {"type": "array"},
-        #         "mood": {"type": "integer"}}
-        # }
-
         sql = """
 INSERT INTO entries (
 user_id,
@@ -127,14 +117,6 @@ entry
 %s
 )
 """
-        # # try to validate it.
-        # try:
-        #     validate(entry, schema)
-
-        # except Exception as e:
-        #     await message.answer("Error encountered while processing your entry. Please wait a little, then send it again.")
-        #     logger.exception(
-        #         f"Exception '{e}' while validating JSON from LLM.\n {entry=}")
 
         # *try to put data in db.
         try:

@@ -8,12 +8,12 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.exceptions import TelegramBadRequest
 
 # local
 from util.db import db_client
-from util.inline_keyboards import settings_firsttime_kb
 from util.states import UserStates
 from util.constants import messages_to_delete
 from util.misc import delete_misc_messages
@@ -24,12 +24,19 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def format_entries(entries: list):
-    logger.info(f"FORMATING: {entries=}")
-    if entries:
-        return f"{''.join([f"{entry[1]}\n{entry[0]}\n\n"  for entry in entries])}"
+# async def change_entry_msg_to(...)
+#     "Changes entry_message if there is one, if not - sends it and updates the "entry_msg_id" state with state.update_data()"
+#     pass
 
-    return f"No entries found!"
+
+def format_entries(entries: list, date: str):
+    if entries:
+        return (
+            f"<b>{date}:</b>\n\n"
+            + f"{''.join([f"{entry[1]}\n{entry[0]}\n\n"  for entry in entries])}"
+        )
+
+    return f"No entries found for {date}!"
 
 
 async def get_entries_at_date(year: int, month: int, day: int, user_id: int):
@@ -91,29 +98,34 @@ async def entries_command_handler(message: Message, state: FSMContext):
         reply_markup=await get_inline_calendar_markup(message, month, year),
     )
 
+    await state.clear()
+
 
 @router.message(F.text.regexp(r"\d{2}/\d{2}/(?:\d{2}|\d{4})$"))
 async def handle_date_message(message: Message, state: FSMContext):
-    "If the user has used /entries command and is writing date themselves."
+    "If the user had used /entries command and is writing date themselves."
 
-    if (
-        await state.get_state() == "UserStates:choosing_entry"
-    ):  # ? maybe i dont need this state check at all.
-        await message.answer("You wrote a date!")
-        day, month, year = message.text.split("/")
-        if len(year) == 2:
-            year = "20" + year
+    user_data = await state.get_data()
+    day, month, year = message.text.split("/")
+    if len(year) == 2:
+        year = "20" + year
 
-        entries = await get_entries_at_date(year, month, day, message.from_user.id)
-        """
-        entries[0] - entry text
-        entries[1] - entry time
-        """
-        logger.info(f"{entries=}")
-        await message.answer(format_entries(entries))
-        # await state.clear()
+    entries = await get_entries_at_date(year, month, day, message.from_user.id)
+    if entries:
+        text = format_entries(entries, date=f"{day}/{month}/{year}")
     else:
-        await message.answer("You wrote a date but youre not choosing an entry.")
+        sent = await message.answer("No entries found!")
+        messages_to_delete[message.from_user.id].append(sent)
+        return
+
+    if "entry_msg_id" not in user_data:  # send entry message for the first time
+        sent = await message.answer(text)
+        await state.update_data(entry_msg_id=sent.message_id)
+    else:  # edit already existing entry message
+        entry_msg_id = user_data["entry_msg_id"]
+        await message.bot.edit_message_text(
+            text=text, chat_id=message.from_user.id, message_id=entry_msg_id
+        )
 
 
 @router.callback_query(
@@ -129,6 +141,7 @@ async def handle_callback(callback: CallbackQuery, state: FSMContext):
     await delete_misc_messages(callback.message, callback.from_user.id)
 
     data = callback.data.split("/")
+    user_data = await state.get_data()
     year, month, day, message_id = map(int, data)
     if day == 32:  # BACK button "<"
         if month - 1 < 1:
@@ -154,10 +167,33 @@ async def handle_callback(callback: CallbackQuery, state: FSMContext):
             await get_inline_calendar_markup(callback.message, month, year),
         )
 
-    else:
+    else:  # handle days
+        bot = callback.bot
         entries = await get_entries_at_date(year, month, day, callback.from_user.id)
-        messages_to_delete[callback.from_user.id].append(
-            await callback.message.answer(format_entries(entries))
-        )
+        if entries:
+            text = format_entries(entries, date=f"{day}/{month}/{year}")
+        else:
+            text = f"No entries found for {day}/{month}/{year}"
+
+        if "entry_msg_id" not in user_data:
+            sent = await bot.send_message(callback.from_user.id, text)
+            await state.update_data(entry_msg_id=sent.message_id)
+        else:
+            entry_msg_id = user_data["entry_msg_id"]
+            try:
+                await bot.edit_message_text(
+                    text=text, chat_id=callback.from_user.id, message_id=entry_msg_id
+                )
+            except (
+                TelegramBadRequest
+            ) as TBR:  # catch exception if the user is choosing the same day
+                if "markup" in TBR.message:
+                    pass
+                else:
+                    await bot.edit_message_text(
+                        text=text[:4096],
+                        chat_id=callback.from_user.id,
+                        message_id=entry_msg_id,
+                    )
 
     await callback.answer()

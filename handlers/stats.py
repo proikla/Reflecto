@@ -157,16 +157,12 @@ async def stats_command_handler(message: Message) -> None:
     raw_data = []
     count = 0
     for mood, dt in result:
-        if count >= range_days:  #!
+        if count >= range_days:  #! fix this shit
             break
 
         raw_data.append((dt + timedelta(hours=utc_offset_result), float(mood)))
         count += 1
 
-    # raw_data = [
-    #     (dt + datetime.timedelta(hours=utc_offset_result), float(mood))
-    #     for mood, dt in result
-    # ]
     raw_data.sort(key=lambda x: x[0])  # sort by full timestamp
 
     if not raw_data:
@@ -189,7 +185,7 @@ async def stats_command_handler(message: Message) -> None:
     # Convert the “smooth” seconds back to datetime for plotting:
     x_smooth_dt = [datetime.fromtimestamp(ts) for ts in x_smooth]
 
-    # === Construct “every‐other‐day” tick list ===
+    # * Construct “every‐other‐day” tick list 
     # We want ticks at midnight on every 2nd day between start_date and end_date.
     start_date = raw_data[0][0].date()
     end_date = raw_data[-1][0].date()
@@ -202,7 +198,7 @@ async def stats_command_handler(message: Message) -> None:
         tick_dates.append(datetime.combine(curr, time()))
         curr += days
 
-    # === Plotting ===
+    # * Plotting
     fig, ax = plt.subplots(figsize=(10, 5))
 
     # Plot the smoothed curve

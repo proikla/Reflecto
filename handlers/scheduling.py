@@ -99,7 +99,7 @@ async def on_startup():
     # * "set up user reminders on startup"
     scheduler.start()
     users_data = await db_client.exec(
-        f"SELECT user_id, interval_hours, summary_at_hour, utc_offset, allow_morning_messages FROM users"
+        f"SELECT user_id, interval_hours, summary_at_hour, utc_offset, morning_message_at_hour FROM users"
     )
     for id, interval, summary_hour, usr_utc_offset, allow_mm in users_data:
         # * schedule reminders

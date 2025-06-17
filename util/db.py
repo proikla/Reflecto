@@ -70,7 +70,6 @@ class DBClient:
             async with conn.cursor() as cur:
                 await cur.execute(query, (where_value,))
                 row = await cur.fetchone()
-                logger.info(f"Executed {query}")
         return row[0] if row else None
 
     async def update_field(
@@ -96,7 +95,6 @@ class DBClient:
         async with await self._pool.connect(self._dsn) as conn:
             async with conn.cursor() as cur:
                 await cur.execute(query, (value, where_value))
-                logger.info(f"Executed {query}")
                 await conn.commit()
 
     async def upsert_field(

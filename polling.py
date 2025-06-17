@@ -41,10 +41,10 @@ commands = [
 #! HUGE REFACTOR!! PLEASE!! ALL OF IT!!!
 
 # todo add "random" or "adaptive" interval.
-# todo remove redundant logging
 # todo add option to remove reminders at all
 # todo add time of reminder in context. If next_message is going to be generated, it will take into account the time that the message will be generated on.
 # todo weekday routine tasks:
+
 """
 Things that are always planned to some day.
 i.e:
@@ -53,8 +53,12 @@ Tuesday - singing
 Wednesday - None
 ...
 """
+
 # todo rework deleting misc messages
 # todo: add "processed" tag to an entry. Will be useful when entries are proccessed in a bunch.
+
+# todo: fix negative values in summary_at_hour #!
+# todo: refactor
 
 
 async def main() -> None:
