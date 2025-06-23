@@ -2,11 +2,9 @@
 import asyncio
 from util.constants import messages_to_delete
 import io
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import logging
-
-# from jsonschema import validate
 
 # third-party
 from aiogram import F, Router

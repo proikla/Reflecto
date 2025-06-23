@@ -13,7 +13,7 @@ from aiogram.enums import ParseMode
 # local
 import APIKEYS
 from util.db import db_client
-from handlers.settings import router as settings_router
+from handlers.settings.settings import router as settings_router
 from handlers.start import router as start_router
 from handlers.journal import router as journal_router
 from handlers.stats import router as stats_router
@@ -21,6 +21,8 @@ from handlers.summary import router as summary_router
 from handlers.scheduling import router as scheduling_router
 from handlers.help import router as help_router
 from handlers.entries import router as entries_router
+from handlers.settings.callbacks import router as settings_callback_router
+from handlers.settings.fsm import router as settings_fsm_router
 
 logger = logging.getLogger(__name__)
 dp = Dispatcher()
@@ -46,19 +48,19 @@ commands = [
 # todo weekday routine tasks:
 
 """
-Things that are always planned to some day.
+Things that are always planned to a certain day.
 i.e:
 Monday - gym (-> Morning OR next_message be smth like: "are you at the gym already?")
 Tuesday - singing
 Wednesday - None
 ...
 """
-
+# todo: Once a week (or during the summary) gather all data from a specific weekday and analyze it to confirm the pattern (^) or not.
 # todo rework deleting misc messages
 # todo: add "processed" tag to an entry. Will be useful when entries are proccessed in a bunch.
-
 # todo: fix negative values in summary_at_hour #!
 # todo: refactor
+# todo: inline kb when choosing hours in /settings
 
 
 async def main() -> None:
@@ -75,6 +77,8 @@ async def main() -> None:
     dp.include_router(scheduling_router)
     dp.include_router(help_router)
     dp.include_router(entries_router)
+    dp.include_router(settings_callback_router)
+    dp.include_router(settings_fsm_router)
 
     # lowest priority goes to journal.
     dp.include_router(journal_router)

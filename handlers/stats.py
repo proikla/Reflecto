@@ -22,89 +22,6 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 
-# @router.message(Command('stats'))
-# async def stats_command_handler(message: Message) -> None:
-#     """
-#     This handler receives messages with `/stats` command
-#     """
-#     await message.answer(f"Here are your mood stats: ")
-#     sql = """
-# SELECT entry->>'mood' as mood,
-# created_ts as ts
-# FROM entries
-# WHERE entry is not null
-# and entry ? 'mood'
-# and user_id = %s
-# """
-
-#     # Fetch and unpack data
-#     result = await db_client.exec(sql, (message.from_user.id,))
-#     raw_data = [(dt.date(), float(mood)) for mood, dt in result]
-#     raw_data.sort(key=lambda x: x[0])  # sort by date
-
-#     # Build full date range from min to max
-#     all_dates = []
-#     start_date = raw_data[0][0]
-#     end_date = raw_data[-1][0]
-#     curr = start_date
-#     while curr <= end_date:
-#         all_dates.append(curr)
-#         curr += datetime.timedelta(days=1)
-
-#     # Fill mood data, inserting None (or previous mood) for missing dates
-#     date_to_mood = {d: m for d, m in raw_data}
-#     mood_list = []
-#     filled_dates = []
-
-#     last_known_mood = None
-#     for d in all_dates:
-#         mood = date_to_mood.get(d)
-#         if mood is not None:
-#             last_known_mood = mood
-#         mood_list.append(last_known_mood if last_known_mood is not None else 0)
-#         filled_dates.append(d)
-
-#     x_numeric = mdates.date2num(filled_dates)
-#     y = mood_list
-#     # Create dense x values for smooth curve
-#     x_smooth = np.linspace(x_numeric.min(), x_numeric.max(), 300)
-
-#     # Create spline of degree 3 (cubic)
-#     # spl = make_interp_spline(x_numeric, y, k=3)
-#     from scipy.interpolate import PchipInterpolator
-#     pchip = PchipInterpolator(x_numeric, y)
-#     # Evaluate spline at smooth points
-#     y_smooth = pchip(x_smooth)
-#     y_smooth = np.clip(y_smooth, 0, 10)
-#     # Plot
-#     fig, ax = plt.subplots(figsize=(10, 5))
-#     mood_list = np.array(mood_list)
-
-#     ax.plot(mdates.num2date(x_smooth), y_smooth)
-#     ax.set_title('Mood')
-#     ax.set_xlabel('Date')
-#     ax.set_ylabel('Mood')
-#     ax.set_ylim(0, 10)
-#     ax.set_yticks(np.arange(0, 11, 1))
-#     ax.grid(True, linestyle='--', alpha=0.5)
-
-#     # Show every date label
-#     ax.set_xticks(filled_dates)
-#     ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d'))
-#     fig.autofmt_xdate(rotation=90)
-
-#     plt.tight_layout()
-
-#     # Save to buffer
-#     buffer = io.BytesIO()
-#     fig.savefig(buffer, format='png')
-#     plt.close(fig)
-#     buffer.seek(0)
-
-#     # Send
-#     await message.reply_photo(BufferedInputFile(buffer.read(), 'plot.png'))
-
-
 @router.message(Command("stats"))
 async def stats_command_handler(message: Message) -> None:
     """
@@ -120,6 +37,7 @@ async def stats_command_handler(message: Message) -> None:
     if len(params) < 2:
         range_days = 0
 
+    # todo: make this work lol
     elif params[1].isnumeric():
         range_days = int(params[1])
     else:
@@ -133,7 +51,6 @@ async def stats_command_handler(message: Message) -> None:
 
     await message.answer("Here are your mood stats:")
 
-    # todo add option to specify the amount of days (or even /stats "month" "/stats year", "/stats all")
     sql = """
     SELECT entry->>'mood' AS mood,
            created_ts AS ts
@@ -153,11 +70,10 @@ async def stats_command_handler(message: Message) -> None:
         range_days = len(result)
 
     # Build list of (datetime.datetime, float) and sort:
-    #! test
     raw_data = []
     count = 0
     for mood, dt in result:
-        if count >= range_days:  #! fix this shit
+        if count >= range_days:
             break
 
         raw_data.append((dt + timedelta(hours=utc_offset_result), float(mood)))
@@ -185,7 +101,7 @@ async def stats_command_handler(message: Message) -> None:
     # Convert the “smooth” seconds back to datetime for plotting:
     x_smooth_dt = [datetime.fromtimestamp(ts) for ts in x_smooth]
 
-    # * Construct “every‐other‐day” tick list 
+    # * Construct “every‐other‐day” tick list
     # We want ticks at midnight on every 2nd day between start_date and end_date.
     start_date = raw_data[0][0].date()
     end_date = raw_data[-1][0].date()
@@ -199,6 +115,7 @@ async def stats_command_handler(message: Message) -> None:
         curr += days
 
     # * Plotting
+    # todo: fix plotting when specifying the amount of days to /stats.
     fig, ax = plt.subplots(figsize=(10, 5))
 
     # Plot the smoothed curve

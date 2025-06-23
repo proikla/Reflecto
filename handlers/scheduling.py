@@ -9,18 +9,16 @@ from APIKEYS import TOKEN
 from handlers.summary import get_user_summary
 from util.constants import SERVER_UTC_OFFSET
 from util.db import db_client
-from util.llm_tasks import make_day_summary, prompt_deepseek
+from util.llm_tasks import generate_morning_message
 
 # third-party
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
-from aiogram import Bot, Dispatcher
-from aiogram.types import BotCommand
+from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram import F, Bot, Router
+from aiogram import Bot, Router
 
 
 router = Router()
@@ -55,15 +53,19 @@ async def send_msg(user_id, summary=False, is_morning_message=False):
     if is_morning_message:  # todo: get usr context working.
         # im assuming context is in JSON format #!
         loop = asyncio.get_event_loop()
-        morning_message_future = loop.run_in_executor(None, prompt_deepseek, context)
+        morning_message_future = loop.run_in_executor(
+            None,
+            generate_morning_message,
+            context,  #! fix, not working bc theres no user context
+        )
 
         try:
             text = await morning_message_future
+            await bot.send_message(user_id, text)
         except Exception as e:
             logger.exception(
                 f"Caught exception '{e}' on morning message scheduled sending."
             )
-        await bot.send_message(user_id, text)
         return
     # prevent sending messages at DND hours.
     if dnd_hours:

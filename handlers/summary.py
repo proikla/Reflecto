@@ -90,10 +90,7 @@ async def summary_command_handler(message: Message, state):
     """
     Get summary for the user.
 
-    Summary is generated every day, at specified time. TODO
-
-    THIS FUNCTION NEEDS TOO:
-    - answer user with context.
+    Summary is generated every day, at specified time.
     """
     user_id = message.from_user.id
     user_utc_offset = await db_client.fetch_field(
@@ -106,14 +103,14 @@ async def summary_command_handler(message: Message, state):
     )
 
     # # * check if summary is created already.
-    # summary_created = await db_client.exec(
-    #     "SELECT s.summary_text FROM summaries as s WHERE s.created_ts > %s",
-    #     (str(day_ago),),
-    # )
+    summary_created = await db_client.exec(
+        "SELECT s.summary_text FROM summaries as s WHERE s.created_ts > %s",
+        (str(day_ago),),
+    )
 
-    # if summary_created:
-    #     await message.reply(str(summary_created[0][0]))
-    #     return
+    if summary_created:
+        await message.reply(str(summary_created[0][0]))
+        return
 
     # * Reply to user with summary
     await message.reply(f"Generating day summary for today, please wait..")

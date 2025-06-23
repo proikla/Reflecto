@@ -24,11 +24,6 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-# async def change_entry_msg_to(...)
-#     "Changes entry_message if there is one, if not - sends it and updates the "entry_msg_id" state with state.update_data()"
-#     pass
-
-
 def format_entries(entries: list, date: str):
     if entries:
         return (
@@ -128,16 +123,14 @@ async def handle_date_message(message: Message, state: FSMContext):
         )
 
 
-@router.callback_query(
-    F.data.regexp(r"\d+/\d+/\d+/\d+")
-)  # ? maybe add message.id to callback so i can change the message.
+@router.callback_query(F.data.regexp(r"\d+/\d+/\d+/\d+"))
 async def handle_callback(callback: CallbackQuery, state: FSMContext):
     "Called when user presses buttons."
 
     if not callback.data:
         return
 
-    # delete junk messages: #? maybe not delete but change it
+    # delete junk messages
     await delete_misc_messages(callback.message, callback.from_user.id)
 
     data = callback.data.split("/")
@@ -186,7 +179,7 @@ async def handle_callback(callback: CallbackQuery, state: FSMContext):
                 )
             except (
                 TelegramBadRequest
-            ) as TBR:  # catch exception if the user is choosing the same day
+            ) as TBR:  # handle exception if the user is selects the same day
                 if "markup" in TBR.message:
                     pass
                 else:

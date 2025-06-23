@@ -2,7 +2,7 @@
 import logging
 
 # third-party
-from aiogram import F, Router
+from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.filters import Command

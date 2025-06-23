@@ -1,0 +1,61 @@
+# stdlib
+import logging
+from datetime import datetime
+
+# local
+from handlers.help import help_handler
+from util.inline_keyboards import build_and_adjust
+from util.constants import messages_to_delete
+from util.db import db_client
+from util.inline_keyboards import settings_kb
+
+# third-party
+from aiogram import Router
+from aiogram.filters import Command
+from aiogram.types import Message
+
+logger = logging.getLogger(__name__)
+
+router = Router()
+
+
+def next_midnight():
+    return datetime.datetime.combine(
+        datetime.date.today() + datetime.timedelta(days=1), datetime.time.min
+    )
+
+
+@router.message(Command("settings"))
+async def command_settings_handler(message: Message):
+    """
+    Send a settings panel with buttons.
+    """
+    user_id = message.from_user.id
+
+    # get user interval
+    user_settings = await db_client.exec(
+        "select interval_hours, utc_offset, dnd_hours, language, morning_message_at_hour, summary_at_hour, custom_reminders from users where user_id = %s",
+        (user_id,),
+    )
+    user_settings = user_settings[0]
+
+    interval = user_settings[0]
+    utc_offset = user_settings[1]
+    dnd_hours = user_settings[2]
+    language = user_settings[3]
+    mm_hour = user_settings[4]
+    summary_hour = user_settings[5]
+    custom_reminders = user_settings[6]
+
+    msg = await message.answer(
+        f"""Settings: 
+Interval hours: {interval}
+Utc offset: {utc_offset}
+Do not disturb hours: {dnd_hours}
+Language: {language}
+Morning messages: {f'at {mm_hour + utc_offset}' if mm_hour else 'disallowed'}
+Auto-summary: {f'at {summary_hour + utc_offset}:00' if summary_hour != -1 else 'turned off'}
+""",
+        reply_markup=build_and_adjust(settings_kb, (3, 2)),
+    )
+    messages_to_delete[user_id].append(msg.message_id)
