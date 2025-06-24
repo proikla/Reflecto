@@ -6,7 +6,7 @@ import re
 # local
 from handlers.settings.settings import command_settings_handler
 from util.states import InSettingsInputStates
-from util.constants import SERVER_UTC_OFFSET, SUPPORTED_LANGUAGES, messages_to_delete
+from util.constants import SERVER_UTC_OFFSET, SUPPORTED_LANGUAGES
 from util.db import db_client
 from ..scheduling import scheduler, send_msg
 from util.log import get_logger
@@ -17,7 +17,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram import Router
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
-
+from util.delete_misc_messages import (
+    delete_user_cached_messages,
+    cache_message_for_deletion,
+)
 
 router = Router()
 logger = get_logger(__name__)
@@ -34,8 +37,6 @@ async def process_fsm(message: Message, state: FSMContext):
         field="utc_offset", where_value=user_id
     )
 
-    messages_to_delete[user_id].append(message.message_id)
-
     curr = await state.get_state()  # Form:name_of_the_state
     curr = curr[20:]
 
@@ -43,23 +44,23 @@ async def process_fsm(message: Message, state: FSMContext):
         await message.answer("Your tmz isnt setyup")
         return
 
-    # delete user answer
-    messages_to_delete[user_id].append(message.message_id)
+    # cache user message for deletion.
+    # await cache_message_for_deletion(message)
     # * Handle different states.
     match curr:
         case "waiting_interval":
             if not message.text.isnumeric():
-                msg = await message.reply(
+                msg = await message.answer(
                     "Please send me the interval you want in hours."
                 )
             else:
+                msg = None
                 interval = int(message.text)
                 await db_client.update_field(
                     "users", "interval_hours", interval, "user_id", user_id
                 )
                 job = scheduler.get_job(str(user_id))
                 if job:
-                    # scheduler.remove_job(str(user_id))
                     scheduler.add_job(
                         send_msg,
                         IntervalTrigger(hours=interval),
@@ -69,11 +70,9 @@ async def process_fsm(message: Message, state: FSMContext):
                         replace_existing=True,
                     )
 
-                msg = None
-
         case "waiting_dnd":
             if not re.search(r"\b\d{1,2}-\d{1,2}$", message.text):
-                msg = await message.reply(
+                msg = await message.answer(
                     "Please ensure your range is valid. Like this: 22-7. (Meaning, i won't disturb you from 22:00 to 7:00) "
                 )
             else:
@@ -83,7 +82,9 @@ async def process_fsm(message: Message, state: FSMContext):
                 msg = None
         case "waiting_lang":
             if not message.text in SUPPORTED_LANGUAGES:
-                msg = await message.reply("It's not a valid language. Choose en or ru.")
+                msg = await message.answer(
+                    "It's not a valid language. Choose en or ru."
+                )
             else:
                 await db_client.update_field(
                     "users", "language", message.text, "user_id", user_id
@@ -113,10 +114,10 @@ async def process_fsm(message: Message, state: FSMContext):
         case (
             "waiting_mm"
         ):  # todo rework. 0 to turn off, any other value < 12 to schedule a morning message
-            if (
-                not message.text.isnumeric()
-                and int(message.text) < 0
-                or int(message.text) > 24
+
+            if not message.text.isnumeric() or (
+                message.text.isnumeric()
+                and (int(message.text) < 0 or int(message.text))
             ):
                 msg = message.answer(
                     "Your message has to be a number (0-24)."
@@ -192,15 +193,8 @@ async def process_fsm(message: Message, state: FSMContext):
         case _:
             msg = await message.answer("Something went wrong!")
 
-    if not msg:
-        msg = message.message_id
+    if msg:  # cache bot reply to user message if there is one
+        await cache_message_for_deletion(msg, user_id=message.from_user.id)
 
-    if isinstance(
-        msg, Message
-    ):  # if the message is a reply. perhaps broken, needs testing.
-        msg = msg.reply_parameters.message_id
-
-    messages_to_delete[user_id].append(msg)
-
-    await command_settings_handler(message)
     await state.clear()
+    await command_settings_handler(message, state)

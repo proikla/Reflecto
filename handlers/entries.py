@@ -15,8 +15,10 @@ from aiogram.exceptions import TelegramBadRequest
 # local
 from util.db import db_client
 from util.states import UserStates
-from util.constants import messages_to_delete
-from util.misc import delete_misc_messages
+from util.delete_misc_messages import (
+    delete_user_cached_messages,
+    cache_message_for_deletion,
+)
 from util.log import get_logger
 
 logger = get_logger(__name__)
@@ -111,7 +113,8 @@ async def handle_date_message(message: Message, state: FSMContext):
         text = format_entries(entries, date=f"{day}/{month}/{year}")
     else:
         sent = await message.answer("No entries found!")
-        messages_to_delete[message.from_user.id].append(sent)
+
+        await cache_message_for_deletion(sent)
         return
 
     if "entry_msg_id" not in user_data:  # send entry message for the first time
@@ -126,13 +129,16 @@ async def handle_date_message(message: Message, state: FSMContext):
 
 @router.callback_query(F.data.regexp(r"\d+/\d+/\d+/\d+"))
 async def handle_callback(callback: CallbackQuery, state: FSMContext):
-    "Called when user presses buttons."
+    "Called when user presses buttons with /entry"
 
     if not callback.data:
         return
 
     # delete junk messages
-    await delete_misc_messages(callback.message, callback.from_user.id)
+    # await delete_misc_messages(callback.message, callback.from_user.id)
+    delete_user_cached_messages(
+        callback.bot, callback.message.chat.id, callback.from_user.id
+    )
 
     data = callback.data.split("/")
     user_data = await state.get_data()

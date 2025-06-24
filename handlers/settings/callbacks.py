@@ -7,10 +7,15 @@ from datetime import UTC, datetime, timedelta
 from handlers.help import help_handler
 from util.inline_keyboards import build_and_adjust
 from util.states import SettingsInputStates
-from util.constants import messages_to_delete
+
+# from util.constants import messages_to_delete
 from util.db import db_client
 from util.inline_keyboards import timezones_kb
 from util.states import SettingsInputStates
+from util.delete_misc_messages import (
+    delete_user_cached_messages,
+    cache_message_for_deletion,
+)
 
 # third-party
 from aiogram import F
@@ -32,7 +37,7 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
     command, option = callback.data.split(":")
     match option:
         case "int":
-            message = await callback.message.reply(
+            message = await callback.message.answer(
                 "What interval do you want? (in hours)"
             )
             await state.set_state(SettingsInputStates.waiting_interval)
@@ -47,7 +52,7 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             )
             await state.set_state(SettingsInputStates.waiting_lang)
         case "tmz":
-            message = await callback.message.reply(
+            message = await callback.message.answer(
                 f"Choose your timezone:",
                 reply_markup=build_and_adjust(timezones_kb, (3, 2)),
             )
@@ -62,7 +67,7 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             if not usr_custom_reminders[0]:
                 usr_custom_reminders = ["None"]
 
-            message = await callback.message.reply(
+            message = await callback.message.answer(
                 f"""
 List custom reminders you'd like to add, separated by a semicolon.
 Your current ones are:
@@ -71,20 +76,21 @@ Your current ones are:
             )
             await state.set_state(SettingsInputStates.waiting_cr)
         case "mm":  # morning messages
-            message = await callback.message.reply(
+            message = await callback.message.answer(
                 f"What time do you want to get morning messages? 0 To turn off."
             )
             await state.set_state(SettingsInputStates.waiting_mm)
 
         case "es":  # evening summaries
-            message = await callback.message.reply(
+            message = await callback.message.answer(
                 f"What time do you want to get auto summary at? 0 if you don't want to get summaries.\nExample: 20"
             )
             await state.set_state(SettingsInputStates.waiting_es)
         case _:
             message = await callback.message.answer("Something went wrong.")
 
-    messages_to_delete[user_id].append(message.message_id)
+    await cache_message_for_deletion(message, user_id=callback.from_user.id)
+
     await callback.answer()
 
 

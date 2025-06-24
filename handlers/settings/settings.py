@@ -3,9 +3,11 @@ import logging
 from datetime import datetime
 
 # local
-from handlers.help import help_handler
 from util.inline_keyboards import build_and_adjust
-from util.constants import messages_to_delete
+from util.delete_misc_messages import (
+    delete_user_cached_messages,
+    cache_message_for_deletion,
+)
 from util.db import db_client
 from util.inline_keyboards import settings_kb
 from util.log import get_logger
@@ -27,12 +29,17 @@ def next_midnight():
 
 
 @router.message(Command("settings"))
-async def command_settings_handler(message: Message):
+async def command_settings_handler(message: Message, state):
     """
     Send a settings panel with buttons.
     """
+    await state.clear()
     user_id = message.from_user.id
 
+    await delete_user_cached_messages(
+        message.bot, message.chat.id, user_id
+    )  # it deletes user messages, but not bot ones.
+    await cache_message_for_deletion(message)
     # get user interval
     user_settings = await db_client.exec(
         "select interval_hours, utc_offset, dnd_hours, language, morning_message_at_hour, summary_at_hour, custom_reminders from users where user_id = %s",
@@ -59,4 +66,6 @@ Auto-summary: {f'at {summary_hour + utc_offset}:00' if summary_hour != -1 else '
 """,
         reply_markup=build_and_adjust(settings_kb, (3, 2)),
     )
-    messages_to_delete[user_id].append(msg.message_id)
+    await cache_message_for_deletion(
+        msg, user_id=message.from_user.id
+    )  # specify user_id to

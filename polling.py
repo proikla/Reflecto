@@ -41,7 +41,6 @@ commands = [
     BotCommand(command="help", description="learn what can you do with Reflecto."),
     BotCommand(command="entries", description="view your entries"),
 ]
-#! HUGE REFACTOR!! PLEASE!! ALL OF IT!!!
 
 # todo add "random" or "adaptive" interval.
 # todo add option to remove reminders at all
@@ -62,6 +61,8 @@ Wednesday - None
 # todo: fix negative values in summary_at_hour #!
 # todo: refactor
 # todo: inline kb when choosing hours in /settings
+
+# todo: fix doubling logging
 
 
 async def main() -> None:

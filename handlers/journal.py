@@ -1,10 +1,8 @@
 # stdlib
 import asyncio
-from util.constants import messages_to_delete
 import io
 from datetime import datetime, timedelta, timezone
 import json
-import logging
 
 # third-party
 from aiogram import F, Router
@@ -16,6 +14,10 @@ import util.llm_tasks as lt
 from util.db import db_client
 from util.log import get_logger
 from handlers.start import command_start_handler
+from util.delete_misc_messages import (
+    delete_user_cached_messages,
+    cache_message_for_deletion,
+)
 
 logger = get_logger(__name__)
 
@@ -49,15 +51,16 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             field="utc_offset", where_field="user_id", where_value=chat_id
         )
         user_tz = timezone(timedelta(hours=user_utc_offset))
-        utc_plus_offset_datetime = datetime.now(user_tz)
+        utc_plus_offset_datetime = datetime.now(user_tz)  # ?
 
         # if user is not in the db or hasn't set their utc_offset
         if not user_utc_offset:
             await command_start_handler(message)
             return
 
-        # send an "reading" acknowledgement.
-        messages_to_delete[message.from_user.id].append(await message.answer("Читаю.."))
+        # send a "reading" acknowledgement.
+        acknowledgement = await message.answer("Reading..")
+        await cache_message_for_deletion(acknowledgement)
 
         loop = asyncio.get_event_loop()
 
@@ -70,7 +73,7 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             blob.seek(0)
             blob = blob.read()
             # += in case there is text already along with the voice message (not gonna happen tho but why not)
-            # logger.info("Trying to prompt whisper")
+            logger.debug("Prompting whisper..")
             get_whisper_future = loop.run_in_executor(None, lt.prompt_whisper, blob)
             try:
                 whisper_text = await get_whisper_future
