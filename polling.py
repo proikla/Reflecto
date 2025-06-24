@@ -71,6 +71,8 @@ async def main() -> None:
     # And the run events dispatching
     await db_client.init()
     # highest priority goes to commands.
+    dp.include_router(settings_fsm_router)
+    dp.include_router(settings_callback_router)
     dp.include_router(settings_router)
     dp.include_router(start_router)
     dp.include_router(stats_router)
@@ -78,8 +80,6 @@ async def main() -> None:
     dp.include_router(scheduling_router)
     dp.include_router(help_router)
     dp.include_router(entries_router)
-    dp.include_router(settings_callback_router)
-    dp.include_router(settings_fsm_router)
 
     # lowest priority goes to journal.
     dp.include_router(journal_router)

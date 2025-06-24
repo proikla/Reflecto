@@ -134,13 +134,13 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
             f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there."
         )
         help = False
-        markup = (build_and_adjust(timezones_kb, (3, 2)),)
-
-    await callback.message.edit_text(
-        text,
-        reply_markup=markup,
-    )
-    await callback.answer(f"Selected {name}")
+        markup = build_and_adjust(timezones_kb, (3, 2))
+        logger.info(f"Trying to edit message with this markup: {markup}")
+        await callback.message.edit_text(
+            text,
+            reply_markup=markup,
+        )
+        await callback.answer(f"Selected {name}")
 
     if help:
         await help_handler(callback.message, state, True)
