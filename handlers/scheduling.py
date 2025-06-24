@@ -1,6 +1,5 @@
 # stdlib
 import asyncio
-import logging
 import random
 from datetime import UTC, datetime, timedelta
 
@@ -10,6 +9,7 @@ from handlers.summary import get_user_summary
 from util.constants import SERVER_UTC_OFFSET
 from util.db import db_client
 from util.llm_tasks import generate_morning_message
+from util.log import get_logger
 
 # third-party
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -25,7 +25,7 @@ router = Router()
 scheduler = AsyncIOScheduler()
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def send_msg(user_id, summary=False, is_morning_message=False):

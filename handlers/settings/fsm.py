@@ -2,7 +2,6 @@
 import logging
 import re
 
-from aiogram import Router
 
 # local
 from handlers.settings.settings import command_settings_handler
@@ -10,16 +9,18 @@ from util.states import InSettingsInputStates
 from util.constants import SERVER_UTC_OFFSET, SUPPORTED_LANGUAGES, messages_to_delete
 from util.db import db_client
 from ..scheduling import scheduler, send_msg
+from util.log import get_logger
 
 # third-party
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from aiogram import Router
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 @router.message(InSettingsInputStates())

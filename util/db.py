@@ -3,6 +3,7 @@ import logging
 
 # local
 from APIKEYS import DBPASS
+from util.log import get_logger
 
 # third-party
 from psycopg import AsyncConnection, sql
@@ -11,7 +12,7 @@ DBNAME = "tg-helper"
 USER = "postgres"
 
 DB_DSN = f"dbname={DBNAME} user={USER} password={DBPASS}"
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DBClient:

@@ -13,6 +13,7 @@ from aiogram.enums import ParseMode
 # local
 import APIKEYS
 from util.db import db_client
+from util.log import get_logger
 from handlers.settings.settings import router as settings_router
 from handlers.start import router as start_router
 from handlers.journal import router as journal_router
@@ -24,7 +25,7 @@ from handlers.entries import router as entries_router
 from handlers.settings.callbacks import router as settings_callback_router
 from handlers.settings.fsm import router as settings_fsm_router
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 dp = Dispatcher()
 TOKEN = APIKEYS.token
 

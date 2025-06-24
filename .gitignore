@@ -23,3 +23,4 @@ ACTUALTODO.MD
 handlers/settings/__pycache__/callbacks.cpython-313.pyc
 handlers/settings/__pycache__/fsm.cpython-313.pyc
 handlers/settings/__pycache__/settings.cpython-313.pyc
+util/__pycache__/log.cpython-313.pyc

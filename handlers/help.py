@@ -11,8 +11,9 @@ from aiogram.filters import Command
 from util.db import db_client
 from util.inline_keyboards import settings_firsttime_kb
 from util.states import SettingsInputStates, InSettingsInputStates
+from util.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 router = Router()

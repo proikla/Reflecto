@@ -1,10 +1,10 @@
 # local
 from util.constants import messages_to_delete
+from util.log import get_logger
 
 # stdlib
-import logging
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 # todo rename, rework

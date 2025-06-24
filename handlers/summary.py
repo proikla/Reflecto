@@ -12,9 +12,10 @@ import logging
 import util.llm_tasks as llm_tasks
 from util.db import db_client
 from util.inline_keyboards import *
+from util.log import get_logger
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def get_user_summary(user_id: int, force=False):

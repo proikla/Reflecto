@@ -8,13 +8,14 @@ from util.inline_keyboards import build_and_adjust
 from util.constants import messages_to_delete
 from util.db import db_client
 from util.inline_keyboards import settings_kb
+from util.log import get_logger
 
 # third-party
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = Router()
 

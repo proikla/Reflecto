@@ -17,8 +17,9 @@ from util.db import db_client
 from util.states import UserStates
 from util.constants import messages_to_delete
 from util.misc import delete_misc_messages
+from util.log import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 router = Router()

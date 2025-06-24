@@ -14,9 +14,10 @@ from aiogram.types import Message
 # local
 import util.llm_tasks as lt
 from util.db import db_client
+from util.log import get_logger
 from handlers.start import command_start_handler
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = Router()
 
