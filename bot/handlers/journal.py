@@ -1,5 +1,4 @@
 # stdlib
-import asyncio
 import io
 from datetime import datetime, timedelta, timezone
 import json
@@ -11,11 +10,10 @@ from aiogram.types import Message
 import loguru
 
 # local
-import util.llm_tasks as lt
+from util.llm_tasks import LLMService
 from util.db import db_client
 from handlers.start import command_start_handler
 from util.delete_misc_messages import (
-    delete_user_cached_messages,
     cache_message_for_deletion,
 )
 
@@ -23,6 +21,7 @@ logger = loguru.logger
 
 router = Router()
 
+llm_service = LLMService()
 
 @router.message(~F.command())
 async def message_handler(message: Message, state: FSMContext) -> None:
@@ -78,7 +77,7 @@ async def message_handler(message: Message, state: FSMContext) -> None:
             logger.debug("Prompting whisper..")
             # get_whisper_future = loop.run_in_executor(None, lt.prompt_whisper, blob)
             try:
-                whisper_text = await lt.transcribe(blob)
+                whisper_text = await llm_service.transcribe(blob)
             except Exception as e:
                 logger.exception(f"Exception while waiting for whisper: {e}")
 
@@ -96,7 +95,7 @@ async def message_handler(message: Message, state: FSMContext) -> None:
         # )
         #
         try:
-            raw_json_str = await lt.get_json_from_journal_entry(text)
+            raw_json_str = await llm_service.get_json_from_journal_entry(text)
         except Exception as llm:
             logger.exception(f"Error while calling LLM: {llm}")
             await message.reply("Error. Please try again later.")

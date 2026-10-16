@@ -11,7 +11,7 @@ TOKEN = os.getenv('TOKEN')
 from handlers.summary import get_user_summary
 from util.constants import SERVER_UTC_OFFSET
 from util.db import db_client
-from util.llm_tasks import generate_morning_message
+from util.llm_tasks import LLMService
 
 # third-party
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -28,6 +28,7 @@ scheduler = AsyncIOScheduler()
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 logger = loguru.logger
+llm_service = LLMService()
 
 
 async def send_msg(user_id, summary=False, is_morning_message=False):
@@ -57,7 +58,7 @@ async def send_msg(user_id, summary=False, is_morning_message=False):
         loop = asyncio.get_event_loop()
         morning_message_future = loop.run_in_executor(
             None,
-            generate_morning_message,
+            llm_service.generate_morning_message,
             context,  #! fix, not working bc theres no user context
         )
 
