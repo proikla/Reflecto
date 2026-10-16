@@ -66,24 +66,24 @@ async def message_handler(message: Message, state: FSMContext) -> None:
 
         # *handle voice messages*
         if message.voice:
-            raise NotImplementedError("Whisper TODO.")
+            # raise NotImplementedError("Whisper TODO.")
             # download it in bytes.
             blob = io.BytesIO()
             file = await bot.get_file(message.voice.file_id)
             await bot.download_file(file.file_path, destination=blob)
             blob.seek(0)
             blob = blob.read()
+
             # += in case there is text already along with the voice message (not gonna happen tho but why not)
             logger.debug("Prompting whisper..")
             # get_whisper_future = loop.run_in_executor(None, lt.prompt_whisper, blob)
             try:
-                # whisper_text = await get_whisper_future
-                ...
+                whisper_text = await lt.transcribe(blob)
             except Exception as e:
                 logger.exception(f"Exception while waiting for whisper: {e}")
 
-            # text += whisper_text
-            # logger.info(f"Got text: '{whisper_text}' from whisper")
+            logger.info(f"Got text: '{whisper_text}' from whisper")
+            text += whisper_text
 
         # length check to prevent deepseek from hallucinating.
         if text.count(" ") < 5:

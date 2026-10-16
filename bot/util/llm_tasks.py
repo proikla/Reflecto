@@ -1,36 +1,36 @@
 # stdlib
+import io
 import os
 
 # third-party
 from huggingface_hub import InferenceClient
+import loguru
 from openai import AsyncOpenAI, OpenAI
 
 # local
 DEEPSEEK_KEY = os.getenv('DSAPI')
+WHISPER_KEY = os.getenv('WHISPER')
 
-# class LLMService:
-#     def __init__(self, api_key: str = None):
-#         self.client = AsyncOpenAI(api_key=DEEPSEEK_KEY, base_url="https://api.deepseek.com")
+class LLMService:
+    def __init__(self, api_key: str = None):
+        self.deepseek_client = AsyncOpenAI(api_key=DEEPSEEK_KEY, base_url="https://api.deepseek.com")
 
-#     def ask(self):
-#         try:
-#             response = await self.client.chat.completions.create(
-#                 model="deepseek-chat",
-#                 messages=[
-#                     {
-#                         "role": "system",
-#                         "content": "You are a helpful English teacher creating educational content.",
-#                     },
-#                     {"role": "user", "content": prompt},
-#                 ],
-#                 temperature=0.7,
-#                 max_tokens=1500,
-#             )
 
-#             content = response.choices[0].message.content
-#             return self._parse_story_response(content)
-#         except Exception as e:
-#             return {"story": f"Error generating story: {str(e)}", "questions": []}
+logger = loguru.logger
+whisper_client = AsyncOpenAI(api_key=WHISPER_KEY)
+
+async def transcribe(audio: bytes) -> str:
+    audio_file = io.BytesIO(audio)
+    audio_file.name = "audio.ogg"  # Use the actual format
+
+    response = await whisper_client.audio.transcriptions.create(
+        model="whisper-1",
+        file=audio_file,
+    )
+
+    text = response.text
+    logger.info("Transcribed text: {}", text)
+    return text
 
 def prompt_whisper(audio: bytes):
 
