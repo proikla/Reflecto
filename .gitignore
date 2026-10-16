@@ -1,6 +1,4 @@
-/APIKEYS.py
 /TODO.MD
-/garbage
 /__pycache__
 handlers/__pycache__/journal.cpython-313.pyc
 handlers/__pycache__/settings.cpython-313.pyc
@@ -19,9 +17,13 @@ util/__pycache__/inline_keyboards.cpython-313.pyc
 util/__pycache__/llm_tasks.cpython-313.pyc
 util/__pycache__/misc.cpython-313.pyc
 util/__pycache__/states.cpython-313.pyc
-ACTUALTODO.MD
 handlers/settings/__pycache__/callbacks.cpython-313.pyc
 handlers/settings/__pycache__/fsm.cpython-313.pyc
 handlers/settings/__pycache__/settings.cpython-313.pyc
 util/__pycache__/log.cpython-313.pyc
 util/__pycache__/delete_misc_messages.cpython-313.pyc
+.env
+TODO.md
+bot/handlers/settings/__pycache__/
+bot/util/__pycache__/
+bot/handlers/__pycache__/

@@ -1,7 +1,8 @@
 # stdlib
 # import logging
-from util.log import get_logger
 from datetime import UTC, datetime, timedelta
+
+import loguru
 
 # local
 from handlers.help import help_handler
@@ -24,7 +25,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram import Router
 
 router = Router()
-logger = get_logger(__name__)
+logger = loguru.logger 
 
 
 @router.callback_query(F.data.regexp(r"set:[a-z]+$"))

@@ -2,6 +2,8 @@
 import logging
 import re
 
+import loguru
+
 
 # local
 from handlers.settings.settings import command_settings_handler
@@ -9,7 +11,6 @@ from util.states import InSettingsInputStates
 from util.constants import SERVER_UTC_OFFSET, SUPPORTED_LANGUAGES
 from util.db import db_client
 from ..scheduling import scheduler, send_msg
-from util.log import get_logger
 
 # third-party
 from aiogram.types import Message
@@ -23,7 +24,7 @@ from util.delete_misc_messages import (
 )
 
 router = Router()
-logger = get_logger(__name__)
+logger = loguru.logger
 
 
 @router.message(InSettingsInputStates())
@@ -124,7 +125,7 @@ async def process_fsm(message: Message, state: FSMContext):
                 )  # test TODO
             else:
                 # update in db
-                allow_mm = int(message.text) - usr_utc_offset
+                allow_mm = int(message.text) - usr_utc_offset # allow_mm - morning message time #?
                 await db_client.update_field(
                     "users",
                     "morning_message_at_hour",
@@ -135,7 +136,7 @@ async def process_fsm(message: Message, state: FSMContext):
 
                 # reschedule morning message
                 job = scheduler.get_job(f"M{user_id}")
-                if job:
+                if job and allow_mm:
                     scheduler.add_job(
                         send_msg,
                         CronTrigger(hour=allow_mm + SERVER_UTC_OFFSET),

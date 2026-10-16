@@ -1,21 +1,20 @@
 # third-party
-import asyncio
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
+import loguru
 
 # stdlib
 import datetime
-import logging
+import asyncio
 
 # local
 import util.llm_tasks as llm_tasks
 from util.db import db_client
 from util.inline_keyboards import *
-from util.log import get_logger
 
 router = Router()
-logger = get_logger(__name__)
+logger = loguru.logger
 
 
 async def get_user_summary(user_id: int, force=False):

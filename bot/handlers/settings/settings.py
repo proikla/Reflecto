@@ -2,6 +2,8 @@
 import logging
 from datetime import datetime
 
+import loguru
+
 # local
 from util.inline_keyboards import build_and_adjust
 from util.delete_misc_messages import (
@@ -10,14 +12,13 @@ from util.delete_misc_messages import (
 )
 from util.db import db_client
 from util.inline_keyboards import settings_kb
-from util.log import get_logger
 
 # third-party
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-logger = get_logger(__name__)
+logger = loguru.logger
 
 router = Router()
 
@@ -42,8 +43,7 @@ async def command_settings_handler(message: Message, state):
     await cache_message_for_deletion(message)
     # get user interval
     user_settings = await db_client.exec(
-        "select interval_hours, utc_offset, dnd_hours, language, morning_message_at_hour, summary_at_hour, custom_reminders from users where user_id = %s",
-        (user_id,),
+        "select interval_hours, utc_offset, dnd_hours, language, morning_message_at_hour, summary_at_hour, custom_reminders from users where user_id = %s", (user_id,),
     )
     user_settings = user_settings[0]
 

@@ -6,14 +6,14 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.filters import Command
+import loguru
 
 # local
 from util.db import db_client
 from util.inline_keyboards import settings_firsttime_kb
 from util.states import SettingsInputStates, InSettingsInputStates
-from util.log import get_logger
 
-logger = get_logger(__name__)
+logger = loguru.logger
 
 
 router = Router()

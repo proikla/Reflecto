@@ -1,15 +1,17 @@
 # stdlib
 import asyncio
+import os
 import random
 from datetime import UTC, datetime, timedelta
 
+import loguru
+
 # local
-from APIKEYS import TOKEN
+TOKEN = os.getenv('TOKEN')
 from handlers.summary import get_user_summary
 from util.constants import SERVER_UTC_OFFSET
 from util.db import db_client
 from util.llm_tasks import generate_morning_message
-from util.log import get_logger
 
 # third-party
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -25,7 +27,7 @@ router = Router()
 scheduler = AsyncIOScheduler()
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-logger = get_logger(__name__)
+logger = loguru.logger
 
 
 async def send_msg(user_id, summary=False, is_morning_message=False):
@@ -107,7 +109,7 @@ async def on_startup():
         # * schedule reminders
         scheduler.add_job(
             send_msg,
-            IntervalTrigger(hours=interval),
+            IntervalTrigger(hours=interval if interval else 1),
             args=[id],
             id=str(id),
         )
@@ -123,7 +125,7 @@ async def on_startup():
             logger.info(f"Summary scheduled for {id} at {summary_hour} UTC")
 
         # * schedule morning message
-        if allow_mm != 0:
+        if allow_mm and allow_mm != 0:
             if allow_mm == 24:
                 allow_mm = 0
             scheduler.add_job(

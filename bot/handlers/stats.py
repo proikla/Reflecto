@@ -2,7 +2,8 @@
 from datetime import datetime, timedelta, time
 import io
 import logging
-from util.log import get_logger
+
+import loguru
 
 # third-party
 from scipy.interpolate import PchipInterpolator
@@ -20,7 +21,7 @@ from util.inline_keyboards import *
 
 
 router = Router()
-logger = get_logger(__name__)
+logger = loguru.logger
 
 
 @router.message(Command("stats"))

@@ -1,6 +1,5 @@
 # local
 from collections import defaultdict
-from util.log import get_logger
 
 # stdlib
 from typing import Dict, List
@@ -9,9 +8,9 @@ from typing import Dict, List
 from aiogram import Bot
 from aiogram.types import Message
 from aiogram.exceptions import TelegramAPIError
-from aiogram.methods import SendMessage
+import loguru
 
-logger = get_logger(__name__)
+logger = loguru.logger
 
 messages_to_delete: Dict[int, List[Message]] = defaultdict(list)
 
@@ -48,10 +47,7 @@ async def cache_message_for_deletion(message: Message, user_id: int = None) -> N
     if not user_id:
         user_id = message.from_user.id
     # if isinstance(message, SendMessage):
-    logger.exception(f"Got message: {message}")
+    # logger.exception(f"Got message: {message}")
 
     messages_to_delete[user_id].append(message)
-    try:
-        logger.debug(f"cached message {message.message_id} for user {user_id}")
-    except:
-        pass
+    logger.debug(f"cached message {message.message_id} for user {user_id}")

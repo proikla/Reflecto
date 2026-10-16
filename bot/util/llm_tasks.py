@@ -1,14 +1,36 @@
 # stdlib
-import json
 import os
-import io
 
 # third-party
 from huggingface_hub import InferenceClient
+from openai import AsyncOpenAI, OpenAI
 
 # local
-from APIKEYS import HFAPI as API_KEY
+DEEPSEEK_KEY = os.getenv('DSAPI')
 
+# class LLMService:
+#     def __init__(self, api_key: str = None):
+#         self.client = AsyncOpenAI(api_key=DEEPSEEK_KEY, base_url="https://api.deepseek.com")
+
+#     def ask(self):
+#         try:
+#             response = await self.client.chat.completions.create(
+#                 model="deepseek-chat",
+#                 messages=[
+#                     {
+#                         "role": "system",
+#                         "content": "You are a helpful English teacher creating educational content.",
+#                     },
+#                     {"role": "user", "content": prompt},
+#                 ],
+#                 temperature=0.7,
+#                 max_tokens=1500,
+#             )
+
+#             content = response.choices[0].message.content
+#             return self._parse_story_response(content)
+#         except Exception as e:
+#             return {"story": f"Error generating story: {str(e)}", "questions": []}
 
 def prompt_whisper(audio: bytes):
 
@@ -16,7 +38,7 @@ def prompt_whisper(audio: bytes):
         return False
     client = InferenceClient(
         provider="hf-inference",
-        api_key=f"{API_KEY}",
+        api_key=f"{DEEPSEEK_KEY}",
         headers={"Content-Type": "audio/ogg"},
     )
     response = client.automatic_speech_recognition(
@@ -27,40 +49,55 @@ def prompt_whisper(audio: bytes):
     return response.text
 
 
-def prompt_deepseek(sysprompt: str, usrprompt: str, model="deepseek-ai/DeepSeek-R1"):
-    client = InferenceClient(api_key=API_KEY, provider="novita")
+# def prompt_deepseek(sysprompt: str, usrprompt: str, model="deepseek-ai/DeepSeek-R1"%:
+#     client = InferenceClient(api_key=DEEPSEEK_KEY, provider="novita")
 
-    messages = [
-        {"role": "system", "content": f"{sysprompt.strip()}"},
-        {"role": "user", "content": f"{usrprompt.strip()}"},
-    ]
+#     messages = [
+#         {"role": "system", "content": f"{sysprompt.strip()}"},
+#         {"role": "user", "content": f"{usrprompt.strip()}"},
+#     ]
 
-    completion = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        max_tokens=0,  # change maybe
-        temperature=0.4,  # fosho change da thang
-    )
+#     completion = client.chat.completions.create(
+#         model=model,
+#         messages=messages,
+#         max_tokens=0,  # change maybe
+#         temperature=0.4,  # fosho change da thang
+#     )
 
-    reply = completion.choices[0].message.content  # tf is choices #?
-    return reply
+#     reply = completion.choices[0].message.content  # tf is choices #?
+#     return reply
 
+
+async def prompt_deepseek(sysprompt: str, usrprompt: str, model="deepseek-chat"):
+    async with AsyncOpenAI(
+        api_key=DEEPSEEK_KEY,
+        base_url="https://api.deepseek.com"
+    ) as client:
+        response = await client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": sysprompt.strip()},
+                {"role": "user", "content": usrprompt.strip()}
+            ]
+        )
+
+    return response.choices[0].message.content
 
 # * PROMPTS:
-def generate_morning_message(user_context: str) -> str:
+async def generate_morning_message(user_context: str) -> str:
     prompt = f"""
 You're a morning message generator. You will get user context in JSON format and return a morning message based on it.
 Your task is to encrourage user to plan their day and to finish their long-term tasks (see CONTEXT). You should also remind user to do their unfinished yesterday's tasks.
 """
 
-    response = prompt_deepseek(prompt, user_context)
+    response = await prompt_deepseek(prompt, user_context)
     return response[response.find("/think>") + 7 : :].strip()
 
 
 def get_discipline_level_from_entry(entry) -> str: ...  # TODO
 
 
-def make_day_summary(
+async def make_day_summary(
     entries, user_context=""
 ) -> str:  # TODO: should also renew user context! see TODO.md
 
@@ -112,12 +149,12 @@ INSTRUCTIONS
 DIARY_ENTRIES: {entries}
 USER_CONTEXT: {user_context}
 """
-    response = prompt_deepseek(prompt, usr_prompt)
+    response = await prompt_deepseek(prompt, usr_prompt)
     # return response
     return response[response.find("/think>") + 7 : :].strip()
 
 
-def get_json_from_journal_entry(entry_text) -> str:
+async def get_json_from_journal_entry(entry_text) -> str:
     prompt = f"""
 Ты — генератор кратких дневниковых записей. Твоя задача:
 1. Принять на вход:
@@ -150,13 +187,9 @@ RULES:
 Use only information explicitly stated in TEXT_ENTRY. Output valid JSON and nothing else.
     """
 
-    response = prompt_deepseek(prompt, entry_text)
+    response = await prompt_deepseek(prompt, entry_text)
     # todo check if the json is valid.
-    # print(response)
-    # response.replace('`', '')
-    # response.replace('json', '')
-    # print(response)
-    return response[response.find("/think>") + 7 : :].strip()
+    return response.strip()
 
 
 # !testing

@@ -1,3 +1,7 @@
+# dotenv
+from dotenv import load_dotenv, dotenv_values
+load_dotenv()
+
 # stdlib
 import logging
 import asyncio
@@ -9,11 +13,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+import loguru
 
-# local
-import APIKEYS
+# # local
 from util.db import db_client
-from util.log import get_logger
 from handlers.settings.settings import router as settings_router
 from handlers.start import router as start_router
 from handlers.journal import router as journal_router
@@ -25,12 +28,17 @@ from handlers.entries import router as entries_router
 from handlers.settings.callbacks import router as settings_callback_router
 from handlers.settings.fsm import router as settings_fsm_router
 
-logger = get_logger(__name__)
-dp = Dispatcher()
-TOKEN = APIKEYS.token
+logger = loguru.logger
+logger.remove()
+logger.add(sys.stderr, level='INFO') # set logger level to INFO, avoiding DEBUG.
 
+from dotenv import load_dotenv
+import os
+
+TOKEN = os.getenv('TOKEN')
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher()
 
 
 commands = [

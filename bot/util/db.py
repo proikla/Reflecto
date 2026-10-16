@@ -1,19 +1,21 @@
 # stdlib
-import logging
+import os
+
+#
+import loguru
 
 # local
-from APIKEYS import DBPASS
-from util.log import get_logger
+DBPASS = os.getenv('POSTGRES_PASSWORD')
+DBNAME = os.getenv('POSTGRES_DB')
+DBUSER = os.getenv('POSTGRES_USER')
+DBHOST = os.getenv('POSTGRES_HOST')
+
+logger = loguru.logger
 
 # third-party
 from psycopg import AsyncConnection, sql
 
-DBNAME = "tg-helper"
-USER = "postgres"
-
-DB_DSN = f"dbname={DBNAME} user={USER} password={DBPASS}"
-logger = get_logger(__name__)
-
+DB_DSN = f"postgresql://{DBUSER}:{DBPASS}@{DBHOST}:5432/{DBNAME}"
 
 class DBClient:
     def __init__(self, dsn: str, min_size: int = 1, max_size: int = 10):

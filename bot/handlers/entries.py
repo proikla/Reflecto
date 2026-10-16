@@ -11,6 +11,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.exceptions import TelegramBadRequest
+import loguru
 
 # local
 from util.db import db_client
@@ -19,9 +20,8 @@ from util.delete_misc_messages import (
     delete_user_cached_messages,
     cache_message_for_deletion,
 )
-from util.log import get_logger
 
-logger = get_logger(__name__)
+logger = loguru.logger
 
 
 router = Router()
