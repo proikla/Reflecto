@@ -53,6 +53,7 @@ async def handle_settings(callback: CallbackQuery, state: FSMContext):
             )
             await state.set_state(SettingsInputStates.waiting_lang)
         case "tmz":
+            await state.set_state(SettingsInputStates.waiting_tmz)
             message = await callback.message.answer(
                 f"Choose your timezone:",
                 reply_markup=build_and_adjust(timezones_kb, (3, 2)),
@@ -96,7 +97,7 @@ Your current ones are:
 
 
 # format of callback - {name}:{offset}
-@router.callback_query(F.data.regexp(r"[a-z]+:\d+$"))
+@router.callback_query(F.data.regexp(r"(?i:[a-z]+):-?\d+"))
 async def set_timezone(callback: CallbackQuery, state: FSMContext):
     """
     Handle callback data from inline keyboard `kb` in the following format - {name}:{offset}. Name being the timezone name, offset is UTC offset of this zone.
@@ -110,13 +111,14 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
     #!todo prevent users from spamming this shit. maybe.
 
     # get timezone and offset from callback
+    logger.info (f"{callback.data}")
     if not callback.data:
         return
 
     name, offset = callback.data.split(":")
     offset = int(offset)
-    time_now = datetime.now(UTC)
-    time_offset = time_now + timedelta(hours=offset)
+    utc_now = datetime.now(UTC)
+    time_offset = utc_now + timedelta(hours=offset)
     user_id = callback.from_user.id
 
     # put this data into db.
@@ -129,18 +131,19 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
     )
 
     logger.info(f"Updated {user_id} in db.")
-
+    help = False
+    await callback.answer(f"You chose {name}")
     # answer callback.
-    if await state.get_state() == "SettingsInputStates:tmz_setup":
+    if await state.get_state() == "SettingsInputStates:tmz_setup": # setting up for the first time
         text = f"Timezone is set! Here's what you can do with <b>Reflecto</b>:"
-        help = True
+        help = True #?
         markup = None
         await state.clear()
+        await help_handler(callback.message, state, help)#?
     else:
         text = (
             f"Timezone set to {name}! It is {time_offset.strftime('%H:%M:%S')} there."
         )
-        help = False
         markup = build_and_adjust(timezones_kb, (3, 2))
         logger.info(f"Trying to edit message with this markup: {markup}")
         await callback.message.edit_text(
@@ -149,5 +152,3 @@ async def set_timezone(callback: CallbackQuery, state: FSMContext):
         )
         await callback.answer(f"Selected {name}")
 
-    if help:
-        await help_handler(callback.message, state, True)

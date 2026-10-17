@@ -6,6 +6,7 @@ TIMEZONES = [
     ("europe", 1),
     ("moscow", 3),
     ("yekaterinburg", 5),
+    ("NY", -4)
 ]  # ("TMZ", utc_offset)
 
 

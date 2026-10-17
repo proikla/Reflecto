@@ -3,6 +3,7 @@ import os
 
 #
 import loguru
+# import sqlalchemy #todo: Use sqlalchemy and make this neat
 
 # local
 DBPASS = os.getenv('POSTGRES_PASSWORD')

@@ -19,13 +19,19 @@ logger = loguru.logger
 router = Router()
 
 
-@router.callback_query(InSettingsInputStates())
-async def process_user_states(message: Message, state: FSMContext):
-    if await state.get_state() == "InSettingsInputStates:tmz_setup":
-        await message.answer(
-            "Great. Now, you can set other settings up at /settings. If you need more help - use /help."
-        )
-        await state.clear()
+# @router.callback_query(InSettingsInputStates()) #! todo:! This is NOT meant to be here.
+# async def process_user_states(message: Message, state: FSMContext):
+#     current_state = await state.get_state()
+#     if current_state == "SettingsInputStates:tmz_setup":
+#         await message.answer(
+#             "Great. Now, you can set other settings up at /settings. If you need more help - use /help."
+#         )
+#         await state.clear()
+
+#     if current_state == "SettingsInputStates:waiting_tmz":
+#         await message.answer(f"Hii")
+#         await state.clear()
+#         await message.answer(f"Hii")
 
 
 @router.message(Command("help", "start"))

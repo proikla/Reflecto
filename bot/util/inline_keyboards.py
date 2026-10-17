@@ -56,8 +56,3 @@ timezones_kb = InlineKeyboardMarkup(
         ]
     ]
 )
-# settings_kb_builder = InlineKeyboardBuilder().from_markup(settings_kb).adjust(3, 2)
-# damn
-# inline keyboards
-# timezones_kb_builder = InlineKeyboardBuilder().from_markup(timezones_kb).adjust(2, 2)
-# timezones_kb_builder.adjust(3, 2)

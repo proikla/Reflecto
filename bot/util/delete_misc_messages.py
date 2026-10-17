@@ -8,6 +8,8 @@ from typing import Dict, List
 from aiogram import Bot
 from aiogram.types import Message
 from aiogram.exceptions import TelegramAPIError
+from aiogram.methods.send_message import SendMessage
+
 import loguru
 
 logger = loguru.logger
@@ -24,7 +26,7 @@ async def delete_user_cached_messages(bot: Bot, chat_id: int, user_id: int) -> N
         logger.debug(f"No messages to delete for {user_id}")
         return
 
-    message_ids = [msg.message_id for msg in messages]
+    message_ids = [msg.message_id if msg else None for msg in messages]
     try:
         await bot.delete_messages(
             chat_id=chat_id, message_ids=message_ids
@@ -46,8 +48,10 @@ async def cache_message_for_deletion(message: Message, user_id: int = None) -> N
     """
     if not user_id:
         user_id = message.from_user.id
-    # if isinstance(message, SendMessage):
-    # logger.exception(f"Got message: {message}")
+    if isinstance(message, SendMessage):
+        # message.message_id = 0 #!
+        # logger.exception(f"Set message_id to 0!")
+        return
 
     messages_to_delete[user_id].append(message)
-    logger.debug(f"cached message {message.message_id} for user {user_id}")
+    # logger.debug(f"cached message {message.message_id} for user {user_id}")

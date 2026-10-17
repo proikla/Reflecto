@@ -41,6 +41,10 @@ async def message_handler(message: Message, state: FSMContext) -> None:
 
     # check if the users has set the timezone
 
+    # if await state.get_state() == 'SettingsInputStates:waiting_tmz': # handle setting timezone with text, not inline callback
+    #     await message.reply(text="You're waiting on tmz.") # placeholder
+    #     return
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     try:
         bot = message.bot

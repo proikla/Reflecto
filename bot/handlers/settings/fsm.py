@@ -42,7 +42,7 @@ async def process_fsm(message: Message, state: FSMContext):
     curr = curr[20:]
 
     if curr == "tmz_setup":
-        await message.answer("Your tmz isnt setyup")
+        await message.answer("Your timezone isn't setup.")
         return
 
     # cache user message for deletion.
@@ -92,10 +92,13 @@ async def process_fsm(message: Message, state: FSMContext):
                 )
                 msg = None
         case "waiting_tmz":
-            msg = None
-            # ?
-            await state.clear()
-            ...
+            text = message.text
+            if text.isnumeric() and -12 <= int(text) <= 14: # see: https://en.wikipedia.org/wiki/List_of_UTC_offsets
+                await db_client.update_field('users', 'utc_offset', text, 'user_id', user_id)
+                msg = await message.answer(f"Updated your uts offset to {text}.")
+                # await message.
+            else:
+                msg = None
 
         case "waiting_cr":
             custom_reminders = re.findall(
@@ -115,17 +118,14 @@ async def process_fsm(message: Message, state: FSMContext):
         case (
             "waiting_mm"
         ):  # todo rework. 0 to turn off, any other value < 12 to schedule a morning message
-
-            if not message.text.isnumeric() or (
-                message.text.isnumeric()
-                and (int(message.text) < 0 or int(message.text))
-            ):
+            text = message.text
+            if not text.isnumeric() and (int(text) < 0 or int(text)):
                 msg = message.answer(
                     "Your message has to be a number (0-24)."
                 )  # test TODO
             else:
                 # update in db
-                allow_mm = int(message.text) - usr_utc_offset # allow_mm - morning message time #?
+                allow_mm = int(text) - usr_utc_offset # allow_mm - morning message time #?
                 await db_client.update_field(
                     "users",
                     "morning_message_at_hour",
